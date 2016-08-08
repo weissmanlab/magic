@@ -2,23 +2,6 @@
 
 import sys, math, numpy, os.path, collections
 
-class TreeStat:
-	def __init__(self, specs):
-		# shortcut names for common stats:
-# 		if specs == 'het':
-# 			def check(locus):
-# 				if len(locus) % 2:
-# 					sys.exit("Error: odd number of haplotypes")
-# 			def filter(locus):
-# 				return [True if locus[i] != locus[i+1] else False for i in range(0:len(locus):2)]
-		if specs == 'tbl':
-			def filter(locus):
-				return True
-		if specs == 'pairwise':
-			def check(locus, args):
-				if args.sample_gaps:
-					sys.exit("Pairwise doesn't work with up/down-sampling. If you want to use sampling, analyze your data a pair of sequences at a time using '--stat segsites'.")
-
 
 def merge(windows, num):
 	if num % 1:

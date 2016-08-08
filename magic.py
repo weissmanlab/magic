@@ -21,25 +21,6 @@ if __name__ != "__main__":
 	cMSMC = 'c'
 	cTrue = 'k'
 	cMLT = 'b'
-
-
-
-class ProbPoint():
-	def __init__(self, x=None, p=None, e=None):
-		self.x = x
-		self.p = p
-		self.e = e
-	def check(self, emax=None, pmin=0, pmax=1):
-		if pmin < self.p < pmax:
-			# require that the error bars be positive (don't allow points that claim to be known perfectly) but not too large:
-			if math.isfinite(self.e) and 0 < self.e < 1: 
-				if emax:
-					if emax > self.e/self.p/(1-self.p):
-						return True
-				else:
-					return True
-		return False
-
 			
 
 # Building the LT curve
