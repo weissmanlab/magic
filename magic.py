@@ -138,29 +138,29 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), Lratio=2, baseL=80, coverage
 	if svals:  # list of desired s values provided
 		return np.array(probFilter([s2pt(s) for s in svals], emax=emax0))
 	else:  # need to determine appropriate s values
-	# start with a LT variable value that should have a nice curve
-	s = 0.1 * coverage * baseL * sum(counts[0]) / (np.arange(len(counts[0])) @ counts[0])
-	allSLT = [s2pt(s)]
-	# go to lower values until estimated homozygosity exceeds maxHom:
-	while allSLT[-1] and probCheck(allSLT[-1], pmax=maxHom, emax=emax0):
-		s /= sratio
-		allSLT.append(s2pt(s))
-	allSLT = sorted(slt for slt in allSLT if slt)
-	try:
-		s = allSLT[-1][0]
-	except: #no s values worked so far; just give up
-		return None
-		#s = sratio * coverage * baseL * sum(counts[0]) / ( np.arange( len(counts[0]) ) @ counts[0] )
-	# go to higher values until we run out of data:
-	failures = 0 
-	while failures <= failtol: # we will allow for some gaps
-		s *= sratio
-		slt = s2pt(s)
-		if slt and probCheck(slt, emax=emax0):
-			allSLT.append(slt)
-		else:
-			failures += 1
-	return np.array(probFilter(allSLT, emax=emax0))
+		# start with a LT variable value that should have a nice curve
+		s = 0.1 * coverage * baseL * sum(counts[0]) / (np.arange(len(counts[0])) @ counts[0])
+		allSLT = [s2pt(s)]
+		# go to lower values until estimated homozygosity exceeds maxHom:
+		while allSLT[-1] and probCheck(allSLT[-1], pmax=maxHom, emax=emax0):
+			s /= sratio
+			allSLT.append(s2pt(s))
+		allSLT = sorted(slt for slt in allSLT if slt)
+		try:
+			s = allSLT[-1][0]
+		except: #no s values worked so far; just give up
+			return None
+			#s = sratio * coverage * baseL * sum(counts[0]) / ( np.arange( len(counts[0]) ) @ counts[0] )
+		# go to higher values until we run out of data:
+		failures = 0 
+		while failures <= failtol: # we will allow for some gaps
+			s *= sratio
+			slt = s2pt(s)
+			if slt and probCheck(slt, emax=emax0):
+				allSLT.append(slt)
+			else:
+				failures += 1
+		return np.array(probFilter(allSLT, emax=emax0))
 
 	
 # Inferring a mixture of gamma distributions:
