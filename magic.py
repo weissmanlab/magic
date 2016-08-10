@@ -17,11 +17,11 @@ if __name__ != "__main__":
 	matplotlib.rcParams['xtick.minor.size'] = 5
 	matplotlib.rcParams['ytick.labelsize'] = 20
 	matplotlib.rcParams['ytick.major.size'] = 10
-	cMAGIC = 'm'
-	cMSMC = 'c'
-	cTrue = 'k'
-	cMLT = 'b'
-			
+	tableau20 = np.array([(31, 119, 180), (174, 199, 232), (255, 127, 14), (255, 187, 120),    
+             (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
+             (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
+             (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
+             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  		
 
 # Building the LT curve
 
