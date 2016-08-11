@@ -158,17 +158,17 @@ args = parser.parse_args()
 nrIndidividuals = len(args.files)
 nrHaplotypes = 2 * nrIndidividuals
 
-print("generating msmc input file with {} haplotypes".format(nrHaplotypes), file=logfile)
+print("generating msmc input file with {} haplotypes".format(nrHaplotypes), file=args.logfile)
 
 joinedVcfIterator = JoinedVcfIterator(args.files)
 maskIterators = []
 if args.masks:
 	for f in args.masks:
-		print("adding mask: {}".format(f), file=logfile)
+		print("adding mask: {}".format(f), file=args.logfile)
 		maskIterators.append(MaskIterator(f))
 if args.negative_masks:
 	for nm in args.negative_masks:
-		print("adding negative mask: {}".format(nm), file=logfile)
+		print("adding negative mask: {}".format(nm), file=args.logfile)
 		maskIterators.append(MaskIterator(nm, True))
 
 mergedMask = MergedMask(maskIterators)
@@ -192,7 +192,7 @@ for chrom, snp_pos, alleles in joinedVcfIterator:
 			nr_called += 1
 			nr_called_window +=1
 		if pos % 1000000 == 0:
-			print("processing pos {}".format(pos), file=logfile)
+			print("processing pos {}".format(pos), file=args.logfile)
 		if pos % args.baselength == 0:
 			if args.coverfile:
 				print(nr_called_window, file=coverage)
