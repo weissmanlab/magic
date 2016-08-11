@@ -2,12 +2,7 @@
 
 # modified version of generate_multihetstep.py from Stephan Schiffels' msmc-tools
 
-import sys
-import gzip
-import string
-import copy
-import argparse
-import io
+import sys, gzip, string, copy, argparse, io
 
 class MaskIterator:
 	def __init__(self, filename, negative=False):
@@ -149,10 +144,8 @@ parser.add_argument("--logfile", help="Log file (instead of stderr)", type=argpa
 parser.add_argument("--coverfile", help="Output file for coverage of windows")
 parser.add_argument("--masks", nargs="+", help="Apply masks in bed format. Should have one calling mask for each individual. Can also have additional masks for e.g. mappability or admixture")
 parser.add_argument("--negative_masks", nargs="*", help="same as mask, but interpreted as negative mask, so places where sites should be excluded")
-parser.add_argument("--min_pos", help="Data starts at this chrom position",type=int,default=1)
-parser.add_argument("--baselength", help="minimum window size",type=int,default=80)
-parser.add_argument("--phase", help="list all possible phases?",action='store_true')
-parser.set_defaults(phase=False)
+parser.add_argument("--baselength", help="minimum window size", type=int, default=80)
+parser.add_argument("--phase", help="list all possible phases?", action='store_true')
 args = parser.parse_args()
 
 nrIndidividuals = len(args.files)
@@ -178,9 +171,9 @@ def is_segregating(alleles):
 		return True
 	return False
 
-pos = args.min_pos-1
+pos = 0
 nr_called = 0
-nr_called_window=0
+nr_called_window = 0
 
 if args.coverfile:
 	coverage = open(args.coverfile,'w')
@@ -190,7 +183,7 @@ for chrom, snp_pos, alleles in joinedVcfIterator:
 		pos += 1
 		if mergedMask.getVal(pos):
 			nr_called += 1
-			nr_called_window +=1
+			nr_called_window += 1
 		if pos % 1000000 == 0:
 			print("processing pos {}".format(pos), file=args.logfile)
 		if pos % args.baselength == 0:
