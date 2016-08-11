@@ -7,7 +7,8 @@ From genome sequences, MAGIC can be used to infer the distribution of pairwise c
 (e.g., total branch length, tips, branches above cherries, etc).
 MAGIC works with the [msmc-tools](http://github.com/stschiff/msmc-tools) set of programs to process the initial data.
 Everything, including the parts of `msmc-tools` that MAGIC interacts with, is written
-in Python (3), and is designed to be modular, so you are encouraged to edit and add to it.
+in Python, and is designed to be modular, so you are encouraged to edit and add to it.
+(Like `msmc-tools`, MAGIC requires Python 3; it also requires [SciPy](https://www.scipy.org).)
 Here's the basic workflow:
 
 ## combo\_prep.py
