@@ -78,7 +78,7 @@ def probCheck(p, emax=None, pmin=0, pmax=1, var=False):
 					err = math.sqrt(p[-1])
 				else:
 					err = p[-1]
-				if emax > err/p[-2]/(1-p[-2]):
+				if emax > err / p[-2] / (1-p[-2]):
 					return True
 			else:
 				return True
@@ -87,22 +87,22 @@ def probCheck(p, emax=None, pmin=0, pmax=1, var=False):
 
 # only take points if they look like real probabilities with reasonable error bars
 def probFilter(points, emax=None, pmin=0, pmax=1):
-	return [p for p in points if (p and probCheck(p,emax,pmin,pmax))]
+	return [p for p in points if (p and probCheck(p, emax, pmin, pmax))]
 	# include the "if p" to filter out Nones
 
 # sigmoid function
 def sigmoid(x,yleft,yright,xmid,slope):
 	'''Shifted, scaled sigmoid function'''
-	return yleft + (yright-yleft) * scipy.special.expit( slope * ( xmid - x ) )
+	return yleft + (yright - yleft) * scipy.special.expit(slope * (xmid - x))
 
 
 # fit a sigmoid curve to some points
 def sigmoidFit(points):
 	xvals, yvals, sigmavals = zip(*points)
-	p0vals = [ min(yvals[0]*1.1,1.0), yvals[-1]*.9, .5*(xvals[0]+xvals[-1]), 0.1 ]
+	p0vals = [min(yvals[0]*1.1,1.0), yvals[-1]*.9, .5*(xvals[0]+xvals[-1]), 0.1]
 	if max(yvals) - min(yvals) > .1 * np.median(sigmavals) :
 		try:
-			return scipy.optimize.curve_fit( sigmoid,xvals, yvals, p0=p0vals, sigma=sigmavals, absolute_sigma=True, maxfev=10**5 )
+			return scipy.optimize.curve_fit(sigmoid,xvals, yvals, p0=p0vals, sigma=sigmavals, absolute_sigma=True, maxfev=10**5)
 		except Exception as error:
 			# print(error)
 			return None
@@ -135,7 +135,7 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), Lratio=2, baseL=80, coverage
 	# define function turn given s into [s, LT{p_T}(s), error]:
 	def s2pt(s):
 		return H0e(s, genFs, Lratio=Lratio, baseL=baseL, coverage=coverage, emaxL=emaxL, pmin=pmin, pmax=pmax, extrapolation=extrapolation)
-	if svals:  # list of desired s values provided
+	if svals is not None:  # list of desired s values provided
 		return np.array(probFilter([s2pt(s) for s in svals], emax=emax0))
 	else:  # need to determine appropriate s values
 		# start with a LT variable value that should have a nice curve
