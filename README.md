@@ -89,17 +89,17 @@ Now you can calculate all the distributions you want without re-running this ste
 To calculate the total branch length distribution (the default), you would run:
 
 	./windower.py chr1
-	./magic.py chr1_counts
+	./magic.py chr1_counts.txt
 	
 If you've processed multiple chromosomes with `combo_prep.py` and `windower.py` and want to 
 combine them all to find the genomic distribution, you would run:
 
-	./magic.py chr*_counts
+	./magic.py chr*_counts.txt
 	
 If you then want to find the distribution of, say, total tip lengths, you would run:
 
 	./windower.py chr1 --stat 1
-	./magic.py chr1_1_counts
+	./magic.py chr1_1_counts.txt
 	
 See the code for `windower.py` for the names of other built-in statistics.
 
