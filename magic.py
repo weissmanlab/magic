@@ -326,6 +326,9 @@ if __name__ == "__main__":
 	
 	SLTpts = inferSLT(counts, baseL=args.baselength, maxHom=args.maxLT, extrapolation=args.extrapolation)
 	
+	if SLTpts is None:
+		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
+	
 	if args.LT:
 		LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
 		if args.outpath:
