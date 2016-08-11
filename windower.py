@@ -53,7 +53,7 @@ if __name__ == '__main__':
 	parser.add_argument("--baselength", help="Smallest length scale", type=int, default=80)
 	parser.add_argument("--min_coverage", help="Minimum coverage for a window to be counted", type=float, default=0.8)
 	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up','down',None], default='down')
-	parser.add_argument("--stat", help="Statistic to calculate (seg sites, alleles, or folded sfs component)", default='segsites')
+	parser.add_argument("--stat", help="Statistic to calculate (tbl, individual tips, folded sfs component)", default='tbl')
 	parser.add_argument("--input_form", help="Format of input", choices=['msmc','windows','reverse_windows'], default='msmc')
 	parser.add_argument("--final_windows", help="Print out the longest windows", action='store_true')
 	args = parser.parse_args()
@@ -74,15 +74,15 @@ if __name__ == '__main__':
 		with open(args.path+'.txt', 'r') as infile:
 			samplesize = len(next(infile).split()[-1]) # might need this if we're calculating SFS or individuals' singletons
 		with open(args.path+'.txt', 'r') as infile:
-			if args.stat == 'segsites':
+			if args.stat == 'tbl':
 				# list of positions of every polymorphic site
 				SNPs = [int(line.split()[1]) for line in infile]
-			elif args.stat == 'alleles':
+			elif args.stat == 'tbl_alleles':
 				if args.sample_gaps:
 					sys.exit('Up/down-sampling only work with number of segregating sites, not number of alleles')
 				# list of positions of every polymorphic site, with multiplicity = num alleles - 1
 				SNPs = [int(line.split()[1]) for line in infile for _ in range(1, len(set(line.split()[-1])))]
-			elif args.stat == 'indiv_singletons':
+			elif args.stat == 'indiv_tips':
 				if args.final_windows:
 					print("No final_windows option yet for indiv_singletons", file=sys.stderr)
 				# break out singletons in each individual separately
@@ -113,15 +113,15 @@ if __name__ == '__main__':
 
 
 	#count diversity in windows:
-	if args.stat == 'indiv_singletons':
+	if args.stat == 'indiv_tips':
 		windowsums = {indiv: [] for indiv in SNPs.keys()}
 	else:
-		windowsums=[]
+		windowsums = []
 	with open(outname+'.log','w') as outfile:	
 		for fold in range(args.scales):
 			print('Calculating stats for lengthscale '+str(fold), file=outfile)
 			L = args.baselength * pow(args.ratio,fold)
-			if args.stat == 'indiv_singletons':
+			if args.stat == 'indiv_tips':
 				try:
 					windows = {indiv: merge(indivwindows, args.ratio) for indiv, indivwindows in windows.items()}
 				except NameError:
@@ -144,7 +144,7 @@ if __name__ == '__main__':
 					break
 				windowsums.append(snpdist(windows, L, args)) 
 			
-	if args.stat == 'indiv_singletons':
+	if args.stat == 'indiv_tips':
 		for indiv, indivwindows in windowsums.items():
 			with open(outname+'{}_counts.txt'.format(indiv),'w') as outfile:
 				for scale in indivwindows:
