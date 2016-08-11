@@ -200,9 +200,9 @@ for chrom, snp_pos, alleles in joinedVcfIterator:
 	if mergedMask.getVal(snp_pos):
 		if is_segregating(alleles):
 			if args.phase:
-				print(chrom, snp_pos, nr_called, alleles, sep="\t", file=snpfile)
+				print(chrom, snp_pos, nr_called, alleles, sep="\t", file=args.snpfile)
 			else:
-				print(chrom, snp_pos, nr_called, alleles.split(",")[0], sep="\t", file=snpfile)
+				print(chrom, snp_pos, nr_called, alleles.split(",")[0], sep="\t", file=args.snpfile)
 			nr_called = 0
 			
 # read to the end of the window containing the last SNP:
