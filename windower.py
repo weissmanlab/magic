@@ -38,20 +38,9 @@ def snpdist(windows, L, args):
 def initwindows(SNPs, basecoverage, args):
 	L0 = args.baselength
 	#initialize windows
-	if args.stat == 'pi':
-		# each entry in SNPs will have form (position, multiplicity)
-		positions, mults = zip(*SNPs)
-	else:
-		# each entry will just be the position, with higher-multiplicity positions listed multiple times
-		mults = None	
-		positions = SNPs
-	windowcounts = numpy.histogram(positions, bins=list(range(1, len(basecoverage)*L0+1, L0)), weights=mults)[0]
+	windowcounts = numpy.histogram(SNPs, bins=list(range(1, len(basecoverage)*L0+1, L0)))[0]
 	return [numpy.array(x) for x in zip(windowcounts, basecoverage)]
-	
-def pairwisediffs(locus):
-	# count number of pairwise differences at polymorphic locus
-	return len(locus) * (len(locus)-1)/2 - sum(k*(k-1)/2 for k in collections.Counter(locus).values())
-	
+		
 if __name__ == '__main__':	
 	import argparse
 
@@ -64,7 +53,7 @@ if __name__ == '__main__':
 	parser.add_argument("--baselength", help="Smallest length scale", type=int, default=80)
 	parser.add_argument("--min_coverage", help="Minimum coverage for a window to be counted", type=float, default=0.8)
 	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up','down',None], default='down')
-	parser.add_argument("--stat", help="Statistic to calculate (pi, seg sites, alleles, or folded sfs component)", default='segsites')
+	parser.add_argument("--stat", help="Statistic to calculate (seg sites, alleles, or folded sfs component)", default='segsites')
 	parser.add_argument("--input_form", help="Format of input", choices=['msmc','windows','reverse_windows'], default='msmc')
 	parser.add_argument("--final_windows", help="Print out the longest windows", action='store_true')
 	args = parser.parse_args()
@@ -93,11 +82,6 @@ if __name__ == '__main__':
 					sys.exit('Up/down-sampling only work with number of segregating sites, not number of alleles')
 				# list of positions of every polymorphic site, with multiplicity = num alleles - 1
 				SNPs = [int(line.split()[1]) for line in infile for _ in range(1, len(set(line.split()[-1])))]
-			elif args.stat == 'pi':
-				if args.sample_gaps:
-					sys.exit("The pi method doesn't work with up/down-sampling. If you want to use sampling, analyze your data a pair of sequences at a time using '--stat segsites'.")
-				# list of positions of every polymorphic site, with multiplicity = # pairwise differences
-				SNPs = [(int(line.split()[1]), pairwisediffs(line.split()[-1])) for line in infile]
 			elif args.stat == 'indiv_singletons':
 				if args.final_windows:
 					print("No final_windows option yet for indiv_singletons", file=sys.stderr)
