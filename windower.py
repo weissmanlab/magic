@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("path", help="Path/prefix for SNP file, and maybe coverage and output files")
-	parser.add_argument("--	file", help="Coverage file, if different from <path>_cover.txt")
+	parser.add_argument("--coverfile", help="Coverage file, if different from <path>_cover.txt")
 	parser.add_argument("--outpath", help="path/prefix for output files, if different from input")
 	parser.add_argument("--scales", help="number of length scales to use for windows", type=int, default=16)
 	parser.add_argument("--ratio", help="Ratio between successive length scales. Must be integer", type=int, default=2)
