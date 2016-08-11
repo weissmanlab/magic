@@ -178,12 +178,14 @@ class GammaParamStep(object):
 		self.stepsize = stepsize
 	def __call__(self, gp):
 		s = self.stepsize
+		eps = 1e-8
 		# component weights are drawn from a Dirichlet distribution to normalize them:
 		gp[::3] = np.random.dirichlet(gp[::3]/sum(gp[::3])/s)
 		# component means and scales are log-normal to keep them positive
 		# we take steps such that the *median*, not mean, is equal to the starting value
-		gp[1::3] = np.random.lognormal(np.log(gp[1::3]), s)
-		gp[2::3] = np.random.lognormal(np.log(gp[2::3]), s)
+		# add eps to make sure we don't try to try to take log of 0
+		gp[1::3] = np.random.lognormal(np.log(gp[1::3] + eps), s)
+		gp[2::3] = np.random.lognormal(np.log(gp[2::3] + eps), s)
 		return gp
 		
 
@@ -315,8 +317,8 @@ if __name__ == "__main__":
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
 	parser.add_argument("--LT", nargs="?", help="Also return the Laplace transform values. Add `only' to return *only* the LT values.", default=False, const=True)
 	parser.add_argument("--components", help="Number of components to fit in gamma mixture", type=int, default=None)
-	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=100)
-	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=1e4)
+	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=30)
+	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=2e4)
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full","sparse"), default="sparse")
 	args = parser.parse_args()
 
