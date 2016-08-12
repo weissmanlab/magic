@@ -3,8 +3,7 @@
 import sys, math, scipy, scipy.stats, scipy.optimize, itertools
 import numpy as np
 
-
-
+		
 # Plotting: this is just for Jupyter notebooks
 if __name__ != "__main__":
 	import matplotlib.pyplot as plt
@@ -23,7 +22,91 @@ if __name__ != "__main__":
              (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
              (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  		
 
+
 # Building the LT curve
+
+class ProbPoint:
+	def __init__(self, p, e=0, x=None):
+		self.p = p
+		self.e = e
+		if x is not None:
+			self.x = x
+	def pe(self):
+		return self.p, self.e
+	def xpe(self):
+		return self.x, self.p, self.e
+	def check(self, emax=None, pmin=0, pmax=1, var=False):
+		'''Check that a putative probability with error makes sense'''
+		# error is standard error, unless var=True, in which case it is variance
+		if pmin < self.p < pmax:
+			#require that the error bars be positive but not too large -- we don't allow points that claim to be known perfectly:
+			if math.isfinite(self.e) and 0 < self.e < 1: 
+				if emax:
+					if var: #need to take sqrt to get std err
+						err = math.sqrt(self.e)
+					else:
+						err = self.e
+					if emax > err / self.p / (1-self.p):
+						return True
+				else:
+					return True
+		return False
+
+
+class Histogram:
+	def __init__(self, counts):
+		self.counts = counts
+		self.n_obs = sum(counts)
+		self.tot_hits = np.arange(len(counts)) @ counts
+		if self.n_obs:
+			self.mean = self.tot_hits/self.n_obs
+	def make_tarray(self, method='Ghoshetal5'):
+		hist = self.counts
+		if method == 'Ghoshetal5':
+			x1 = hist.nonzero()[0][0]
+			if len(hist) > x1+1 and sum(hist[x1+1:]) > 0:
+				Nm1oD = (sum(hist[x1+1:]) - 1) / (sum(j*k for j, k in enumerate(hist[x1:])) - 1)
+				return np.array([(k, j - Nm1oD * max(j-x1-1, 0), j) for j, k in enumerate(hist) if k])
+			else:
+				return np.array([(hist[x1], x1, x1)])
+		elif method == 'ClevensonZidek':
+			if self.tot_hits:
+				corr = 1 + (np.count_nonzero(hist)-1) / self.tot_hits
+				return np.array([(k, j/corr, j) for j, k in enumerate(hist) if k])
+			else:
+				return np.array([(hist[0], 0, 0)])
+		elif method == 'ML':
+			return np.array([(k, j, j) for j, k in enumerate(hist) if k])
+		else:
+			raise ValueError('Error: invalid method')
+
+class SNPHistogram(Histogram):
+	def __init__(self, counts, bases=None):
+		Histogram.__init__(self, counts)
+		self.bases = bases
+		if self.bases and self.mean:
+			self.theta = self.mean / self.bases
+		self.tarray = self.make_tarray()
+		# need to allow for fact that homozygous windows don't really have T=0:
+		if self.tarray[0, 1] == 0:
+			self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
+	def gfe(self, z):
+		'''return generating function with error bars'''
+		zpows = z**np.arange(len(self.counts))
+		p0 = zpows @ self.counts / self.n_obs
+		with np.errstate(over='raise'):
+			try:
+				err = np.sqrt((np.exp(-(1-z**2) * self.tarray[:,1]) - np.exp(-2 * (1-z) * self.tarray[:,1])) @ self.tarray[:,0]) / self.n_obs
+			except FloatingPointError:
+				err = np.inf
+		return ProbPoint(p0, err, z)
+	def lte(self, s):
+		return self.gfe(1 - s/self.bases)
+	def ltle(self, s):
+		lt = self.gfe(1 - s/self.bases)
+		lt.x = np.log(self.bases)
+		return lt
+
 
 # estimate underlying coalescence times from a mutation histogram
 # tries to get it right on a per-window basis, rather than matching overall distribution
@@ -48,7 +131,7 @@ def mhist2Tlist(hist, method='Ghoshetal5'):
 		raise ValueError('Error: invalid method')
 
 # given a mutation histogram, return a generating function with error bars
-def gfe(hist,method='Ghoshetal5'):
+def gfe(hist, method='Ghoshetal5'):
 	'''given a mutation histogram, return a generating function with error bars'''
 	tot = sum(hist)
 	Tlist = mhist2Tlist(hist,method)
@@ -91,55 +174,80 @@ def probFilter(points, emax=None, pmin=0, pmax=1):
 	# include the "if p" to filter out Nones
 
 # sigmoid function
-def sigmoid(x,yleft,yright,xmid,slope):
+def sigmoid(x, yleft, yright, xmid, slope):
 	'''Shifted, scaled sigmoid function'''
-	return yleft + (yright - yleft) * scipy.special.expit(slope * (xmid - x))
+	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))
 
 
 # fit a sigmoid curve to some points
-def sigmoidFit(points):
+def sigmoidFit(points, anchor=None):
 	xvals, yvals, sigmavals = zip(*points)
-	p0vals = [min(yvals[0]*1.1,1.0), yvals[-1]*.9, .5*(xvals[0]+xvals[-1]), 0.1]
-	if max(yvals) - min(yvals) > .1 * np.median(sigmavals) :
-		try:
-			return scipy.optimize.curve_fit(sigmoid,xvals, yvals, p0=p0vals, sigma=sigmavals, absolute_sigma=True, maxfev=10**5)
-		except Exception as error:
-			# print(error)
+	# initial guesses:
+	p0vals = [min(yvals[0]*1.1, 1.0), yvals[-1]*.9, np.mean(xvals), 1]
+	if anchor is None:
+		# make sure that there is some slope to detect above the noise:
+		if max(yvals) - min(yvals) < .1 * np.median(sigmavals):
 			return None
+		else:
+			bounds = (0, [1, 1, np.inf, np.inf]) 
+			f = sigmoid
 	else:
-		return None
+		# make sure that there is some slope to detect above the noise:
+		if max(yvals) - anchor < .1 * np.median(sigmavals):
+			return None
+		else:
+			# anchor the right asymptote of the sigmoid:
+			del p0vals[1]
+			def f(x, yleft, xmid, slope):
+				return sigmoid(x, yleft, anchor, xmid, slope)
+			bounds = (0, [1, np.inf, np.inf])
+	try:
+		return scipy.optimize.curve_fit(f, xvals, yvals, p0=p0vals, sigma=sigmavals, absolute_sigma=True, bounds=bounds, max_nfev=10**5)
+	except Exception as error:
+		# print(error)
+		return None			
 
 
-def H0e(s, genFs, Lratio=2, baseL=80, coverage=1, emaxL=1, pmin=0, pmax=1, extrapolation=.5):
-	'''Infer the pointwise LT with error at s given a list of window-averaged generating functions genf'''
-	LTLpts = probFilter([[i] + f(1 - s / (coverage * baseL * Lratio**i)) for i, f in enumerate(genFs)], emax=emaxL, pmin=pmin, pmax=pmax)
+
+def h0e(LTLpts, extrapolation=.5, anchor=None):
+	'''Infer the pointwise LT with error at s given an array of estimates bsaed on different window sizes'''
 	if len(LTLpts) < 4 : #not going to be able to fit sigmoid
 		return None
-	fit = sigmoidFit(LTLpts)
+	fit = sigmoidFit(LTLpts, anchor=anchor)
 	if fit:
+		if anchor:
+			yleft, xmid, slope = fit[0]
+		else:
+			yleft, yright, xmid, slope = fit[0]
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
-		if (fit[0][2] - LTLpts[0][0]) * np.abs(fit[0][3]) * extrapolation > 1:
-			fit0 = sigmoid(0, *fit[0])
-			#approximate the variance at 0:
-			esx = np.exp(fit[0][2] * fit[0][3])
-			var0 = (esx**2 * fit[1][0][0] + fit[1][1][1] + 2 * esx * fit[1][1][0]) / (1+esx)**2
-			if probCheck([s, fit0, var0], var=True) :
-				return [s, fit0, np.sqrt(var0)]
+		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
+			# check that we have a valid probability:
+			var0 = fit[1][0][0]
+			if probCheck([yleft, var0], var=True) :
+				return [yleft, np.sqrt(var0)]
 	return None
 	
 		
-def inferSLT(counts, svals=None, sratio=np.sqrt(2), Lratio=2, baseL=80, coverage=1, maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2):
+def inferSLT(counts, svals=None, sratio=np.sqrt(2), coverage=1, maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
-	# generating functions of histograms at every length scale:
-	genFs = [gfe(hist) for hist in counts]
-	# define function turn given s into [s, LT{p_T}(s), error]:
+	# need to calculate heterozygosity if we want to use it as anchor:
+	theta = counts[-1].mean / (coverage * counts[-1].bases)
+	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
-		return H0e(s, genFs, Lratio=Lratio, baseL=baseL, coverage=coverage, emaxL=emaxL, pmin=pmin, pmax=pmax, extrapolation=extrapolation)
+		LTLpts = probFilter([hist.ltle(s/coverage).xpe() for hist in counts], emax=emaxL, pmin=pmin, pmax=pmax)
+		if anchor:
+			pe = h0e(LTLpts, extrapolation=extrapolation, anchor=np.exp(-s*theta))
+		else:
+			pe = h0e(LTLpts, extrapolation=extrapolation)
+		if pe is None:
+			return None
+		else:
+			return [s] + pe
 	if svals is not None:  # list of desired s values provided
 		return np.array(probFilter([s2pt(s) for s in svals], emax=emax0))
 	else:  # need to determine appropriate s values
 		# start with a LT variable value that should have a nice curve
-		s = 0.1 * coverage * baseL * sum(counts[0]) / (np.arange(len(counts[0])) @ counts[0])
+		s = 0.1 * coverage * counts[0].bases / counts[0].mean
 		allSLT = [s2pt(s)]
 		# go to lower values until estimated homozygosity exceeds maxHom:
 		while allSLT[-1] and probCheck(allSLT[-1], pmax=maxHom, emax=emax0):
