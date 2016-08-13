@@ -62,10 +62,6 @@ class Histogram:
 			self.mean = self.tot_hits/self.n_obs
 
 class SNPHistogram(Histogram):
-	def __init__(self, counts, bases=None, coverage=1):
-		Histogram.__init__(self, counts)
-		self.bases = bases
-		self.coverage = coverage
 	def make_tarray(self, method='Ghoshetal5'):
 		'''Quick estimate of window-averaged coalescence times, to use in calculating stochasticity in mutation accumulation'''
 		hist = self.counts
@@ -86,10 +82,14 @@ class SNPHistogram(Histogram):
 			return np.array([(k, j, j) for j, k in enumerate(hist) if k])
 		else:
 			raise ValueError('Error: invalid method')
-	tarray = make_tarray()
-	# need to allow for fact that homozygous windows don't really have T=0:
-	if self.tarray[0, 1] == 0:
-		self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
+	def __init__(self, counts, bases=None, coverage=1):
+		Histogram.__init__(self, counts)
+		self.bases = bases
+		self.coverage = coverage
+		self.tarray = self.make_tarray()
+		# need to allow for fact that homozygous windows don't really have T=0:
+		if self.tarray[0, 1] == 0:
+			self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
 	def theta(self):
 		return self.mean / (self.bases * self.coverage)
 	def gfe(self, z):
@@ -434,11 +434,8 @@ if __name__ == "__main__":
 	for scale, count in enumerate(counts):
 		count.bases = args.baselength * 2**scale
 		count.coverage = args.coverage
-		
-# 	with open(args.outpath + '_totcounts.txt', 'w') as outfile:
-# 		print('\n'.join(' '.join(str(x) for x in hist) for hist in counts), file=outfile)
-	
-	SLTpts = inferSLT(counts, baseL=args.baselength, maxHom=args.maxLT, extrapolation=args.extrapolation)
+			
+	SLTpts = inferSLT(counts, maxHom=args.maxLT, extrapolation=args.extrapolation)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
