@@ -60,7 +60,14 @@ class Histogram:
 		self.tot_hits = np.arange(len(counts)) @ counts
 		if self.n_obs:
 			self.mean = self.tot_hits/self.n_obs
+
+class SNPHistogram(Histogram):
+	def __init__(self, counts, bases=None, coverage=1):
+		Histogram.__init__(self, counts)
+		self.bases = bases
+		self.coverage = coverage
 	def make_tarray(self, method='Ghoshetal5'):
+		'''Quick estimate of window-averaged coalescence times, to use in calculating stochasticity in mutation accumulation'''
 		hist = self.counts
 		if method == 'Ghoshetal5':
 			x1 = hist.nonzero()[0][0]
@@ -79,16 +86,10 @@ class Histogram:
 			return np.array([(k, j, j) for j, k in enumerate(hist) if k])
 		else:
 			raise ValueError('Error: invalid method')
-
-class SNPHistogram(Histogram):
-	def __init__(self, counts, bases=None, coverage=1):
-		Histogram.__init__(self, counts)
-		self.bases = bases
-		self.coverage = coverage
-		self.tarray = self.make_tarray()
-		# need to allow for fact that homozygous windows don't really have T=0:
-		if self.tarray[0, 1] == 0:
-			self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
+	tarray = make_tarray()
+	# need to allow for fact that homozygous windows don't really have T=0:
+	if self.tarray[0, 1] == 0:
+		self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
 	def theta(self):
 		return self.mean / (self.bases * self.coverage)
 	def gfe(self, z):
@@ -397,14 +398,14 @@ def extractCounts(filenames, input="sparse"):
 			with open(file, 'r') as infile:
 				countdicts.append([{int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
 		combocountdicts = [combinecounts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
-		return [dict2array(hist) for hist in combocountdicts]
+		return [SNPHistogram(dict2array(hist)) for hist in combocountdicts]
 	#if the input files are written as full lists:
 	elif input == "full":
 		allcounts = []
 		for file in filenames:
 			with open(file, 'r') as infile:
 				allcounts.append([np.array([int(x) for x in line.split()]) for line in infile])
-		return [combinecounts(hists, "full") for hists in itertools.zip_longest(*allcounts)]
+		return [SNPHistogram(combinecounts(hists, "full")) for hists in itertools.zip_longest(*allcounts)]
 	else:
 		sys.exit("Unknown input format")
 	
@@ -417,7 +418,8 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	parser.add_argument("countfiles", nargs="+", help="files with histograms of polymorphisms/window")
 	parser.add_argument("--outpath", help="Output prefix (otherwise prints to stdout)")
-	parser.add_argument("--baselength", help="Number of (called) bases in shortest windows", type=np.int, default=64)
+	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
+	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
@@ -429,6 +431,10 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	counts = extractCounts(args.countfiles, args.input)
+	for scale, count in enumerate(counts):
+		count.bases = args.baselength * 2**scale
+		count.coverage = args.coverage
+		
 # 	with open(args.outpath + '_totcounts.txt', 'w') as outfile:
 # 		print('\n'.join(' '.join(str(x) for x in hist) for hist in counts), file=outfile)
 	
