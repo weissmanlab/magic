@@ -81,15 +81,16 @@ class Histogram:
 			raise ValueError('Error: invalid method')
 
 class SNPHistogram(Histogram):
-	def __init__(self, counts, bases=None):
+	def __init__(self, counts, bases=None, coverage=1):
 		Histogram.__init__(self, counts)
 		self.bases = bases
-		if self.bases and self.mean:
-			self.theta = self.mean / self.bases
+		self.coverage = coverage
 		self.tarray = self.make_tarray()
 		# need to allow for fact that homozygous windows don't really have T=0:
 		if self.tarray[0, 1] == 0:
 			self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
+	def theta(self):
+		return self.mean / (self.bases * self.coverage)
 	def gfe(self, z):
 		'''return generating function with error bars'''
 		zpows = z**np.arange(len(self.counts))
@@ -101,9 +102,9 @@ class SNPHistogram(Histogram):
 				err = np.inf
 		return ProbPoint(p0, err, z)
 	def lte(self, s):
-		return self.gfe(1 - s/self.bases)
+		return self.gfe(1 - s/(self.bases * self.coverage))
 	def ltle(self, s):
-		lt = self.gfe(1 - s/self.bases)
+		lt = self.gfe(1 - s/(self.bases * self.coverage))
 		lt.x = np.log(self.bases)
 		return lt
 
@@ -228,15 +229,13 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 	return None
 	
 		
-def inferSLT(counts, svals=None, sratio=np.sqrt(2), coverage=1, maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
+def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
-	# need to calculate heterozygosity if we want to use it as anchor:
-	theta = counts[-1].mean / (coverage * counts[-1].bases)
 	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
-		LTLpts = probFilter([hist.ltle(s/coverage).xpe() for hist in counts], emax=emaxL, pmin=pmin, pmax=pmax)
+		LTLpts = probFilter([hist.ltle(s).xpe() for hist in counts], emax=emaxL, pmin=pmin, pmax=pmax)
 		if anchor:
-			pe = h0e(LTLpts, extrapolation=extrapolation, anchor=np.exp(-s*theta))
+			pe = h0e(LTLpts, extrapolation=extrapolation, anchor=np.exp(-s*counts[-1].theta()))
 		else:
 			pe = h0e(LTLpts, extrapolation=extrapolation)
 		if pe is None:
@@ -247,7 +246,7 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), coverage=1, maxHom=.99, emax
 		return np.array(probFilter([s2pt(s) for s in svals], emax=emax0))
 	else:  # need to determine appropriate s values
 		# start with a LT variable value that should have a nice curve
-		s = 0.1 * coverage * counts[0].bases / counts[0].mean
+		s = 0.1 / counts[0].theta()
 		allSLT = [s2pt(s)]
 		# go to lower values until estimated homozygosity exceeds maxHom:
 		while allSLT[-1] and probCheck(allSLT[-1], pmax=maxHom, emax=emax0):
@@ -258,7 +257,6 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), coverage=1, maxHom=.99, emax
 			s = allSLT[-1][0]
 		except: #no s values worked so far; just give up
 			return None
-			#s = sratio * coverage * baseL * sum(counts[0]) / ( np.arange( len(counts[0]) ) @ counts[0] )
 		# go to higher values until we run out of data:
 		failures = 0 
 		while failures <= failtol: # we will allow for some gaps
