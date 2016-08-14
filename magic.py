@@ -224,9 +224,13 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
 		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
 			# check that we have a valid probability:
+			try:
+				pt = ProbPoint(yleft, np.sqrt(fit[1][0][0]))
+			except:
+				return None
 			var0 = fit[1][0][0]
-			if probCheck([yleft, var0], var=True) :
-				return [yleft, np.sqrt(var0)]
+			if pt.check():
+				return pt
 	return None
 	
 		
@@ -242,20 +246,22 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0,
 		if pe is None:
 			return None
 		else:
-			return [s] + pe
+			pe.x = s
+			return pe
 	if svals is not None:  # list of desired s values provided
-		return np.array(probFilter([s2pt(s) for s in svals], emax=emax0))
+		allSLT = [s2pt(s) for s in svals]
+		return np.array([slt for slt in allSLT if slt.check(emax=emax0)])
 	else:  # need to determine appropriate s values
 		# start with a LT variable value that should have a nice curve
 		s = 0.1 / counts[0].theta()
 		allSLT = [s2pt(s)]
 		# go to lower values until estimated homozygosity exceeds maxHom:
-		while allSLT[-1] and probCheck(allSLT[-1], pmax=maxHom, emax=emax0):
+		while allSLT[-1] and allSLT[-1].check(pmax=maxHom):
 			s /= sratio
 			allSLT.append(s2pt(s))
-		allSLT = sorted(slt for slt in allSLT if slt)
+		allSLT = sorted([slt for slt in allSLT if slt], key=lambda pt: pt.x)
 		try:
-			s = allSLT[-1][0]
+			s = allSLT[-1].x
 		except: #no s values worked so far; just give up
 			return None
 		# go to higher values until we run out of data:
@@ -263,11 +269,11 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0,
 		while failures <= failtol: # we will allow for some gaps
 			s *= sratio
 			slt = s2pt(s)
-			if slt and probCheck(slt, emax=emax0):
+			if slt and slt.check(emax=emax0):
 				allSLT.append(slt)
 			else:
 				failures += 1
-		return np.array(probFilter(allSLT, emax=emax0))
+		return np.array([slt.xpe() for slt in allSLT if slt.check(emax=emax0)])
 
 	
 # Inferring a mixture of gamma distributions:
