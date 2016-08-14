@@ -185,7 +185,9 @@ def sigmoid(x, yleft, yright, xmid, slope):
 def sigmoidFit(points, anchor=None):
 	xvals, yvals, sigmavals = zip(*points)
 	# initial guesses:
-	p0vals = [min(yvals[0]*1.1, 1.0), yvals[-1]*.9, np.mean(xvals), 1]
+	# bounded linear extrapolation for left asymptote:
+	yleft0 = min(1, yvals[0] + (yvals[0] - yvals[1]) * xvals[0] / (xvals[1] - xvals[0]))
+	p0vals = [yleft0, yvals[-1]*.9, np.mean(xvals), 1]
 	if anchor is None:
 		# make sure that there is some slope to detect above the noise:
 		if max(yvals) - min(yvals) < .1 * np.median(sigmavals):
