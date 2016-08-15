@@ -175,10 +175,10 @@ def probFilter(points, emax=None, pmin=0, pmax=1):
 	return [p for p in points if (p and probCheck(p, emax, pmin, pmax))]
 	# include the "if p" to filter out Nones
 
-# sigmoid function
-def sigmoid(x, yleft, yright, xmid, slope):
+# sigmoid function (generalized logistic curve)
+def sigmoid(x, yleft, yright, xmid, slope, alpha=1):
 	'''Shifted, scaled sigmoid function'''
-	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))
+	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))**alpha
 
 
 # fit a sigmoid curve to some points
@@ -202,9 +202,10 @@ def sigmoidFit(points, anchor=None):
 		else:
 			# anchor the right asymptote of the sigmoid:
 			del p0vals[1]
-			def f(x, yleft, xmid, slope):
-				return sigmoid(x, yleft, anchor, xmid, slope)
-			bounds = (0, [1, np.inf, np.inf])
+			p0vals.append(1)
+			def f(x, yleft, xmid, slope, alpha):
+				return sigmoid(x, yleft, anchor, xmid, slope, alpha)
+			bounds = (0, [1, np.inf, np.inf, np.inf])
 	try:
 		return scipy.optimize.curve_fit(f, xvals, yvals, p0=p0vals, sigma=sigmavals, absolute_sigma=True, bounds=bounds, max_nfev=10**5)
 	except Exception as error:
@@ -220,11 +221,17 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 	fit = sigmoidFit(LTLpts, anchor=anchor)
 	if fit:
 		if anchor:
-			yleft, xmid, slope = fit[0]
+			yleft, xmid, slope, alpha = fit[0]
 		else:
 			yleft, yright, xmid, slope = fit[0]
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
 		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
+# 			# check that inferred asymptote is not that far from linear extrapolation:
+# 			for pt1, pt2 in zip(LTLpts, LTLpts[1:]):
+# 				if np.abs(pt1[1] - pt1[0] * (pt2[1]-pt1[1]) / (pt2[0]-pt1[0]) - yleft) < yleft * (1-yleft) * extrapolation / 1:
+# 					break
+# 			else:
+# 				return None
 			# check that we have a valid probability:
 			try:
 				pt = ProbPoint(yleft, np.sqrt(fit[1][0][0]))
@@ -240,7 +247,7 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0,
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
 	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
-		LTLpts = probFilter([hist.ltle(s).xpe() for hist in counts], emax=emaxL, pmin=pmin, pmax=pmax)
+		LTLpts = [pt.xpe() for pt in (hist.ltle(s) for hist in counts) if pt.check(emax=emaxL, pmin=pmin, pmax=pmax)]
 		if anchor:
 			pe = h0e(LTLpts, extrapolation=extrapolation, anchor=np.exp(-s*counts[-1].theta()))
 		else:
