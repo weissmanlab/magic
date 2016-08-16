@@ -127,12 +127,12 @@ class SNPHistogram(Histogram):
 
 
 def sigmoid(x, yleft, yright, xmid, slope, alpha=1):
-	'''Sigmoid function (generalized logistic curve)'''
+	'''Sigmoid function (generalized logistic curve).'''
 	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))**alpha
 
 
-def sigmoidFit(points, anchor=None):
-	''''Fit a sigmoid curve to points'''
+def sigmoid_fit(points, anchor=None):
+	''''Fit a sigmoid curve to points.'''
 	xvals, yvals, sigmavals = zip(*points)
 	# initial guesses:
 	# bounded linear extrapolation for left asymptote:
@@ -165,10 +165,10 @@ def sigmoidFit(points, anchor=None):
 
 
 def h0e(LTLpts, extrapolation=.5, anchor=None):
-	'''Infer the pointwise LT with error at s given an array of estimates bsaed on different window sizes'''
+	'''Infer the pointwise LT with error at s given an array of estimates based on different window sizes.'''
 	if len(LTLpts) < 4 : #not going to be able to fit sigmoid
 		return None
-	fit = sigmoidFit(LTLpts, anchor=anchor)
+	fit = sigmoid_fit(LTLpts, anchor=anchor)
 	if fit:
 		if anchor:
 			yleft, xmid, slope, alpha = fit[0]
@@ -192,7 +192,7 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 	return None
 	
 		
-def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
+def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
 	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
@@ -236,7 +236,7 @@ def inferSLT(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0,
 	
 # Inferring a mixture of gamma distributions:
 
-def GammaObj(GParams, mLTobs, zeroPt=False):
+def gamma_obj(GParams, mLTobs, zeroPt=False):
 	norm = np.sum(GParams[::3])
 	if zeroPt:
 		# last entry of GParams is weight at t=0
@@ -260,7 +260,7 @@ class GammaParamStep(object):
 		return gp
 		
 
-def InferGParams(mLTobs, method='basinhopping', zeroPt=False, fullout=False, guess=None, npieces=None, bndries=None, m=None, T=None, niter=100, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=False, guess=None, npieces=None, bndries=None, m=None, T=None, niter=100, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
 	if guess is None:
 		if zeroPt:
 			if npieces is None:
@@ -279,13 +279,13 @@ def InferGParams(mLTobs, method='basinhopping', zeroPt=False, fullout=False, gue
 		if T is None:
 			# we expect the differences among peak heights to scale with the number of points being fitted:
 			T = len(mLTobs)/10
-		ans = scipy.optimize.basinhopping(GammaObj, guess, niter=niter, T=T, take_step=step, minimizer_kwargs={"method":"L-BFGS-B", "args":(mLTobs,zeroPt), "bounds":bndries, "options": {"ftol":factr*1e-17, "gtol":pgtol, "maxfun":maxfun, "maxiter":maxiter, "maxcor":m}},)
+		ans = scipy.optimize.basinhopping(gamma_obj, guess, niter=niter, T=T, take_step=step, minimizer_kwargs={"method":"L-BFGS-B", "args":(mLTobs,zeroPt), "bounds":bndries, "options": {"ftol":factr*1e-17, "gtol":pgtol, "maxfun":maxfun, "maxiter":maxiter, "maxcor":m}},)
 		if fullout:
 			return ans
 		else:
 			return [ans.x, ans.fun]
 	else:
-		return scipy.optimize.fmin_l_bfgs_b(GammaObj, guess, args=(mLTobs,zeroPt), approx_grad=True, bounds=bndries, factr=factr, pgtol=pgtol, maxfun=maxfun, maxiter=maxiter, m=m)
+		return scipy.optimize.fmin_l_bfgs_b(gamma_obj, guess, args=(mLTobs,zeroPt), approx_grad=True, bounds=bndries, factr=factr, pgtol=pgtol, maxfun=maxfun, maxiter=maxiter, m=m)
 
 
 
@@ -330,7 +330,7 @@ class GammaMix(scipy.stats.rv_continuous):
 
 # Processing windower output:
 
-def combinecounts(counts, input="sparse"):
+def combine_counts(counts, input="sparse"):
 	'''Combine multiple histograms'''
 	if input == "sparse":
 		combokeys = set().union(*[hist.keys() for hist in counts])
@@ -353,7 +353,7 @@ def dict2array(wdata):
 	return a
 	
 	
-def extractCounts(filenames, input="sparse"):
+def extract_counts(filenames, input="sparse"):
 	'''from a list of files, returns a list of arrays with the j^th entry of the i^th array = number of windows at lengthscale i with j polymorphisms'''
 	# if the input files are written as sparse dictionaries:
 	if input == "sparse": 
@@ -361,7 +361,7 @@ def extractCounts(filenames, input="sparse"):
 		for file in filenames:
 			with open(file, 'r') as infile:
 				countdicts.append([{int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
-		combocountdicts = [combinecounts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
+		combocountdicts = [combine_counts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
 		return [SNPHistogram(dict2array(hist)) for hist in combocountdicts]
 	#if the input files are written as full lists:
 	elif input == "full":
@@ -369,7 +369,7 @@ def extractCounts(filenames, input="sparse"):
 		for file in filenames:
 			with open(file, 'r') as infile:
 				allcounts.append([np.array([int(x) for x in line.split()]) for line in infile])
-		return [SNPHistogram(combinecounts(hists, "full")) for hists in itertools.zip_longest(*allcounts)]
+		return [SNPHistogram(combine_counts(hists, "full")) for hists in itertools.zip_longest(*allcounts)]
 	else:
 		sys.exit("Unknown input format")
 	
@@ -401,12 +401,12 @@ if __name__ == "__main__":
 		else:
 			outfiles[key] = sys.stdout
 	
-	counts = extractCounts(args.countfiles, args.input)
+	counts = extract_counts(args.countfiles, args.input)
 	for scale, count in enumerate(counts):
 		count.bases = args.baselength * 2**scale
 		count.coverage = args.coverage
 			
-	SLTpts = inferSLT(counts, maxHom=args.maxLT, extrapolation=args.extrapolation)
+	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
@@ -417,7 +417,7 @@ if __name__ == "__main__":
 		if args.LT == 'only':
 			sys.exit()
 
-	GParams = InferGParams(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
+	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
 	
 	chooseprint(GParams, file=outfiles['full'])
 	
