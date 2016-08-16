@@ -24,6 +24,7 @@ if __name__ != "__main__":
              
 # Printing: utility function for optional output files		
 def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
+	'''Print to stdout, stderr, or a named file. If file, opens and closes the file.'''
 	if file in (None, sys.stdout, sys.stderr):
 		if 'end' in kwargs.keys():
 			print(*objects, file=file, **kwargs)
