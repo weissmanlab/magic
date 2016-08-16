@@ -37,6 +37,7 @@ def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
 # Inferring the Laplace transform curve:
 
 class ProbPoint:
+	'''A probability, optionally with standard error and ordinate.'''
 	def __init__(self, p, e=0, x=None):
 		self.p = p
 		self.e = e
@@ -73,6 +74,7 @@ class Histogram:
 			self.mean = self.tot_hits/self.n_obs
 
 class SNPHistogram(Histogram):
+	'''A histogram of SNP counts across windows'''
 	def make_tarray(self, method='Ghoshetal5'):
 		'''Quick estimate of window-averaged coalescence times, to use in calculating stochasticity in mutation accumulation'''
 		hist = self.counts
@@ -102,9 +104,10 @@ class SNPHistogram(Histogram):
 		if self.tarray[0, 1] == 0:
 			self.tarray[0, 1] = np.log(2)/self.tarray[0, 0] # could use something else
 	def theta(self):
+		'''Mean number of mutations per sequenced base.'''
 		return self.mean / (self.bases * self.coverage)
 	def gfe(self, z):
-		'''return generating function with error bars'''
+		'''Generating function with error bars.'''
 		zpows = z**np.arange(len(self.counts))
 		p0 = zpows @ self.counts / self.n_obs
 		with np.errstate(over='raise'):
@@ -114,86 +117,22 @@ class SNPHistogram(Histogram):
 				err = np.inf
 		return ProbPoint(p0, err, z)
 	def lte(self, s):
+		'''Estimated LaplaceTransform{p_T}(s), with error.'''
 		return self.gfe(1 - s/(self.bases * self.coverage))
 	def ltle(self, s):
+		'''Estimated LaplaceTransform{p_T}(s), with error and log(#bases) as ordinate.'''
 		lt = self.gfe(1 - s/(self.bases * self.coverage))
 		lt.x = np.log(self.bases)
 		return lt
 
 
-# estimate underlying coalescence times from a mutation histogram
-# tries to get it right on a per-window basis, rather than matching overall distribution
-def mhist2Tlist(hist, method='Ghoshetal5'):
-	if method == 'Ghoshetal5':
-		x1 = hist.nonzero()[0][0]
-		if len(hist) > x1+1 and sum(hist[x1+1:]) > 0:
-			Nm1oD = (sum(hist[x1+1:]) - 1) / (sum(j*k for j, k in enumerate(hist[x1:])) - 1)
-			return np.array([(k, j - Nm1oD * max(j-x1-1, 0), j) for j, k in enumerate(hist) if k])
-		else:
-			return np.array([(hist[x1], x1, x1)])
-	elif method == 'ClevensonZidek':
-		tot = sum(j*k for j,k in enumerate(hist))
-		if tot:
-			corr = 1 + (np.count_nonzero(hist)-1) / tot
-			return np.array([(k,j/corr,j) for j, k in enumerate(hist) if k])
-		else:
-			return np.array([(hist[0],0,0)])
-	elif method == 'ML':
-		return np.array([(k,j,j) for j, k in enumerate(hist) if k])
-	else:
-		raise ValueError('Error: invalid method')
-
-# given a mutation histogram, return a generating function with error bars
-def gfe(hist, method='Ghoshetal5'):
-	'''given a mutation histogram, return a generating function with error bars'''
-	tot = sum(hist)
-	Tlist = mhist2Tlist(hist,method)
-	#need to allow for fact that homozygous windows don't really have T=0:
-	if Tlist[0,1] == 0:
-		Tlist[0,1] = np.log(2)/Tlist[0,0] # could use something else
-	def gfpme(z):
-		zpows = np.power( z, range(len(hist)) )
-		p0 = zpows @ hist/tot
-		with np.errstate(over='raise'):
-			try:
-				err = np.sqrt((np.exp(-(1-z**2) * Tlist[:,1]) - np.exp(-2*(1-z) * Tlist[:,1])) @ Tlist[:,0]) / tot
-			except FloatingPointError:
-				err = np.inf
-		return [p0, err]
-	return gfpme
-
-def probCheck(p, emax=None, pmin=0, pmax=1, var=False):
-	'''Check that a putative probability with error makes sense'''
-	# last two entries in p should be value and error
-	# error is standard error, unless var=True, in which case it is variance
-	if pmin < p[-2] < pmax:
-		#require that the error bars be positive but not too large -- we don't allow points that claim to be known perfectly:
-		if math.isfinite(p[-1]) and 0 < p[-1] < 1: 
-			if emax:
-				if var: #need to take sqrt to get std err
-					err = math.sqrt(p[-1])
-				else:
-					err = p[-1]
-				if emax > err / p[-2] / (1-p[-2]):
-					return True
-			else:
-				return True
-	return False
-
-
-# only take points if they look like real probabilities with reasonable error bars
-def probFilter(points, emax=None, pmin=0, pmax=1):
-	return [p for p in points if (p and probCheck(p, emax, pmin, pmax))]
-	# include the "if p" to filter out Nones
-
-# sigmoid function (generalized logistic curve)
 def sigmoid(x, yleft, yright, xmid, slope, alpha=1):
-	'''Shifted, scaled sigmoid function'''
+	'''Sigmoid function (generalized logistic curve)'''
 	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))**alpha
 
 
-# fit a sigmoid curve to some points
 def sigmoidFit(points, anchor=None):
+	''''Fit a sigmoid curve to points'''
 	xvals, yvals, sigmavals = zip(*points)
 	# initial guesses:
 	# bounded linear extrapolation for left asymptote:
