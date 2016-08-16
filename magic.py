@@ -187,7 +187,6 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 				pt = ProbPoint(yleft, np.sqrt(fit[1][0][0]))
 			except:
 				return None
-			var0 = fit[1][0][0]
 			if pt.check():
 				return pt
 	return None
