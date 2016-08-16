@@ -20,10 +20,17 @@ if __name__ != "__main__":
              (44, 160, 44), (152, 223, 138), (214, 39, 40), (255, 152, 150),    
              (148, 103, 189), (197, 176, 213), (140, 86, 75), (196, 156, 148),    
              (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
-             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  		
+             (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  
+             
+# Printing: utility function for optional output files		
+def chooseprint(text, file=sys.stdout, method='w', **kwargs):
+	if file in (sys.stdout, sys.stderr):
+		print(text+'\n', file=file, **kwargs)
+	else:
+		with open(file, method) as outfile:
+			print(text, file=outfile, **kwargs)
 
-
-# Building the LT curve
+# Inferring the Laplace transform curve:
 
 class ProbPoint:
 	def __init__(self, p, e=0, x=None):
@@ -445,6 +452,13 @@ if __name__ == "__main__":
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full","sparse"), default="sparse")
 	args = parser.parse_args()
 
+	outfiles = {}
+	for key in ('LT', 'final', 'full'):
+		if args.outpath:
+			outfiles[key] = args.outpath + '_{}.txt'.format(key)
+		else:
+			outfiles[key] = sys.stdout
+	
 	counts = extractCounts(args.countfiles, args.input)
 	for scale, count in enumerate(counts):
 		count.bases = args.baselength * 2**scale
@@ -457,22 +471,13 @@ if __name__ == "__main__":
 	
 	if args.LT:
 		LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
-		if args.outpath:
-			with open(args.outpath + '_LT.txt', 'w') as outfile:
-				print(LTstring, file=outfile)
-		else:
-			print(LTstring + '\n')
+		chooseprint(LTstring, outfiles['LT'])
 		if args.LT == 'only':
 			sys.exit()
 
 	GParams = InferGParams(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
 	
-	if args.outpath:
-		with open(args.outpath + '_full.txt', 'w') as outfile:
-			print(GParams, file=outfile)
-	else:
-		print(GParams)
-		print('\n')
+	chooseprint(GParams, outfiles['full'])
 	
 	try:
 		GP = GParams.x # syntax if we're getting full output from basinhopping
@@ -495,11 +500,7 @@ if __name__ == "__main__":
 	if wzero:
 		nicestring += ' ' + str(wzero)
 	
-	if args.outpath:
-		with open(args.outpath + '_final.txt', 'w') as outfile:
-			print(nicestring, file=outfile)
-	else:
-		print(nicestring)
+	chooseprint(nicestring, outfiles['final'])
 
 	
 	
