@@ -316,7 +316,7 @@ class GammaMix(scipy.stats.rv_continuous):
 		EG.append((trange[-1] / theta0, 0))
 		return EG
 	def ms(self, trange, L=0, rho=0, trees=False):
-		'''Produce parameter string for ms from gamma mixture parameters'''
+		'''Produce parameter string for ms from gamma mixture parameters.'''
 		theta0 = (1-self.cdf(trange[0])) / self.pdf(trange[0])
 		eGparams = self.eg(trange)
 		msparams = ''
@@ -331,7 +331,7 @@ class GammaMix(scipy.stats.rv_continuous):
 # Processing windower output:
 
 def combine_counts(counts, input="sparse"):
-	'''Combine multiple histograms'''
+	'''Combine multiple histograms.'''
 	if input == "sparse":
 		combokeys = set().union(*[hist.keys() for hist in counts])
 		return {i:sum(hist[i] for hist in counts if i in hist.keys()) for i in combokeys}
@@ -345,7 +345,7 @@ def combine_counts(counts, input="sparse"):
 
 
 def dict2array(wdata):
-	'''Given dictionary histogram of data {i:count_i}, returns an array with array[i]=count_i'''
+	'''Given dictionary histogram of data {i:count_i}, returns an array with array[i]=count_i.'''
 	maxi = max(wdata.keys())
 	a = np.zeros(maxi+1)
 	for i,n in wdata.items():
@@ -354,7 +354,7 @@ def dict2array(wdata):
 	
 	
 def extract_counts(filenames, input="sparse"):
-	'''from a list of files, returns a list of arrays with the j^th entry of the i^th array = number of windows at lengthscale i with j polymorphisms'''
+	'''from a list of files, returns a list of arrays with the j^th entry of the i^th array = number of windows at lengthscale i with j polymorphisms.'''
 	# if the input files are written as sparse dictionaries:
 	if input == "sparse": 
 		countdicts = []
@@ -387,7 +387,7 @@ if __name__ == "__main__":
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
-	parser.add_argument("--LT", nargs="?", help="Also return the Laplace transform values. Add `only' to return *only* the LT values.", default=False, const=True)
+	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values.", default=True)
 	parser.add_argument("--components", help="Number of components to fit in gamma mixture", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
