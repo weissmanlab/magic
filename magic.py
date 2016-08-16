@@ -23,12 +23,15 @@ if __name__ != "__main__":
              (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  
              
 # Printing: utility function for optional output files		
-def chooseprint(text, file=sys.stdout, method='w', **kwargs):
-	if file in (sys.stdout, sys.stderr):
-		print(text+'\n', file=file, **kwargs)
+def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
+	if file in (None, sys.stdout, sys.stderr):
+		if 'end' in kwargs.keys():
+			print(*objects, file=file, **kwargs)
+		else:
+			print(*objects, file=file, end = '\n\n', **kwargs)
 	else:
 		with open(file, method) as outfile:
-			print(text, file=outfile, **kwargs)
+			print(*objects, file=outfile, **kwargs)
 
 # Inferring the Laplace transform curve:
 
@@ -471,13 +474,13 @@ if __name__ == "__main__":
 	
 	if args.LT:
 		LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
-		chooseprint(LTstring, outfiles['LT'])
+		chooseprint(LTstring, file=outfiles['LT'])
 		if args.LT == 'only':
 			sys.exit()
 
 	GParams = InferGParams(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
 	
-	chooseprint(GParams, outfiles['full'])
+	chooseprint(GParams, file=outfiles['full'])
 	
 	try:
 		GP = GParams.x # syntax if we're getting full output from basinhopping
@@ -500,7 +503,7 @@ if __name__ == "__main__":
 	if wzero:
 		nicestring += ' ' + str(wzero)
 	
-	chooseprint(nicestring, outfiles['final'])
+	chooseprint(nicestring, file=outfiles['final'])
 
 	
 	
