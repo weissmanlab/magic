@@ -381,7 +381,7 @@ if __name__ == "__main__":
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument("countfiles", nargs="+", help="files with histograms of polymorphisms/window")
-	parser.add_argument("--outpath", help="Output prefix (otherwise prints to stdout)")
+	parser.add_argument("--out", help="Output prefix (otherwise prints to stdout)")
 	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
 	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
@@ -396,8 +396,8 @@ if __name__ == "__main__":
 
 	outfiles = {}
 	for key in ('LT', 'final', 'full'):
-		if args.outpath:
-			outfiles[key] = args.outpath + '_{}.txt'.format(key)
+		if args.out:
+			outfiles[key] = args.out + '_{}.txt'.format(key)
 		else:
 			outfiles[key] = sys.stdout
 	
