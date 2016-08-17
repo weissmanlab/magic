@@ -48,7 +48,7 @@ The basic syntax is:
 
 This performs the remaining steps of the analysis. The basic syntax is:
 
-	./magic.py <histogram files> 
+	./magic.py <histogram files> --out <output_prefix>
 	
 where the histogram files are the outputs of `windower.py`. 
 This will produce a file with the suffix `_final.txt` with the best fit
@@ -62,17 +62,16 @@ desired time is exactly 0.
 branches that lie over exactly 1/3 of the haplotypes in the sample; 
 for these features you can force `magic.py` to include this line using the optional argument `--zero`.)
 Additionally, `magic.py` produces a file with the suffix `_full.txt` that gives more information
-about how good the fit is.
-If the optional argument `--LT` is provided, it also produces a file with the suffix `_LT.txt`
-giving the Laplace transform of the distribution at a discrete set of points; this
-is the underlying data that is used to fit the mixture of gamma distributions, 
-and it is useful in its own right as a set of statistics for model checking.
+about how good the fit is, and a file with the suffix `_LT.txt`
+giving the Laplace transform of the distribution at a discrete set of points.
+These points are the underlying data used to fit the mixture of gamma distributions, 
+and are useful in their own right for model checking.
 
 ## magicplots.ipynb
 
 If you have [Jupyter](http://jupyter.org/) installed, this is a template for making a notebook
 with plots of the distributions produced by MAGIC. 
-It's also useful for doing more quantitative analysis on the results.
+It's also useful for doing further quantitative analysis of the results.
 
 # Summary
 
@@ -90,17 +89,17 @@ Now you can calculate all the distributions you want without re-running this ste
 To calculate the total branch length distribution (the default), you would run:
 
 	./windower.py chr1
-	./magic.py chr1_counts.txt
+	./magic.py chr1_counts.txt --out chr1
 	
 If you've processed multiple chromosomes with `combo_prep.py` and `windower.py` and want to 
 combine them all to find the genomic distribution, you would run:
 
-	./magic.py chr*_counts.txt
+	./magic.py chr*_counts.txt --out genome
 	
 If you then want to find the distribution of, say, total tip lengths, you would run:
 
 	./windower.py chr1 --stat 1
-	./magic.py chr1_1_counts.txt
+	./magic.py chr1_1_counts.txt --out chr1_ttip
 	
 See the code for `windower.py` for the names of other built-in statistics.
 
