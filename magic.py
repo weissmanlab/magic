@@ -22,7 +22,10 @@ if __name__ != "__main__":
              (227, 119, 194), (247, 182, 210), (127, 127, 127), (199, 199, 199),    
              (188, 189, 34), (219, 219, 141), (23, 190, 207), (158, 218, 229)])/255  
              
-# Printing: utility function for optional output files		
+             
+             
+# Printing:	
+
 def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
 	'''Print to stdout, stderr, or a named file. If file, opens and closes the file.'''
 	if file in (None, sys.stdout, sys.stderr):
@@ -33,6 +36,8 @@ def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
 	else:
 		with open(file, method) as outfile:
 			print(*objects, file=outfile, **kwargs)
+
+
 
 # Inferring the Laplace transform curve:
 
@@ -379,7 +384,8 @@ def extract_counts(filenames, input="sparse"):
 	
 # code to run as script:
 if __name__ == "__main__":
-	import argparse
+	import argparse, warnings
+
 	
 	parser = argparse.ArgumentParser()
 	parser.add_argument("countfiles", nargs="+", help="files with histograms of polymorphisms/window")
@@ -402,6 +408,14 @@ if __name__ == "__main__":
 			outfiles[key] = args.out + '_{}.txt'.format(key)
 		else:
 			outfiles[key] = sys.stdout
+			
+	# redirect warnings to the 'full' file:
+	if args.out:
+		def warn2file(message, category, filename, lineno, file=args.out+'_full.txt', line=None):
+			'''Print warning to a file instead of sys.stderr'''
+			with open(file, 'a') as warnfile:
+				print(warnings.formatwarning(message, category, filename, lineno), file=warnfile)
+		warnings.showwarning = warn2file
 	
 	counts = extract_counts(args.countfiles, args.input)
 	for scale, count in enumerate(counts):
