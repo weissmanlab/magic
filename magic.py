@@ -292,6 +292,7 @@ def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=False, 
 # Gamma mixture distributions:
 
 class GammaMix(scipy.stats.rv_continuous):
+	'''Mixture of gamma distributions and optionally a discrete mass at 0.'''
 	def __init__(self, params):
 		scipy.stats.rv_continuous.__init__(self, a=0)
 		self.params = np.copy(params)
@@ -305,12 +306,16 @@ class GammaMix(scipy.stats.rv_continuous):
 		#include possibility for delta functions at 0
 		return np.sum(self.params[i] * scipy.stats.gamma.cdf(t, self.params[i+1], scale=self.params[i+2]) if (i<len(self.params)-2 and np.prod(self.params[i:i+3])) else self.params[i] for i in range(0,len(self.params),3))
 	def lt(self, s):
+		'''Laplace transform evaluated at s.'''
 		return np.sum(self.params[i] * np.power(1 + self.params[i+2]*s, -self.params[i+1]) if i<len(self.params)-2 else self.params[i] for i in range(0, len(self.params), 3))
 	def blcdf(self, r):
+		'''Fraction of IBD blocks with map length less than r/(mutation rate).'''
 		return (np.prod(self.parray, axis=1) / np.sum(np.prod(self.parray, axis=1))) @ np.power(1 + self.parray[:,2]*r, -self.parray[:,1] - 1)
 	def ne(self, t):
+		'''Inverse hazard rate ("effective population size" for pairwise coalescence time).'''
 		return self.sf(t)/self.pdf(t)
 	def eg(self, trange):
+		'''Approximate N_e(t) with a piecewise exponential curve. Returns list of (time, growth rate) pairs appropriate for ms.'''
 		theta0 = (1-self.cdf(trange[0])) / self.pdf(trange[0])
 		EG = [(t0 / theta0, np.log(self.pdf(t1)/self.pdf(t0)*(1-self.cdf(t0))/(1-self.cdf(t1))) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])]
 		EG.append((trange[-1] / theta0, 0))
