@@ -265,16 +265,16 @@ def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=False, 
 		if zeroPt:
 			if npieces is None:
 				npieces = 1 + len(mLTobs) // 3
-			guess = np.append( np.ravel( [ [ 1/npieces, npieces-.1-i, 1/mLTobs[-i,0]/(npieces-.1-i) ] for i in range(npieces-1) ] ) ,1/npieces )
+			guess = np.append(np.ravel([[ 1/npieces, npieces-.1-i, 1/mLTobs[-i,0]/(npieces-.1-i)] for i in range(npieces-1)]) , 1/npieces)
 		else:
 			if npieces is None:
 				npieces = (len(mLTobs) + 1) // 3
-			guess = np.ravel([ [1/npieces, npieces-.1-i, 1/mLTobs[-i,0]/(npieces-.1-i)] for i in range(npieces)])
+			guess = np.ravel([[1 / npieces, npieces - .1 - i, 1 / mLTobs[-i,0] / (npieces-.1-i)] for i in range(npieces)])
 	if bndries is None:
-		bndries = [ [ (0,1), (0,None), (0,None) ][x % 3] for x in range(len(guess)) ]
+		bndries = [[(0, 1), (0, None), (0, None)][x % 3] for x in range(len(guess))]
 	if m is None:
-		m = max( 10, len(mLTobs)**2 )
-	if method=='basinhopping':
+		m = max(10, len(mLTobs)**2)
+	if method == 'basinhopping':
 		step = GammaParamStep()
 		if T is None:
 			# we expect the differences among peak heights to scale with the number of points being fitted:
@@ -365,7 +365,7 @@ def extract_counts(filenames, input="sparse"):
 				countdicts.append([{int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
 		combocountdicts = [combine_counts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
 		return [SNPHistogram(dict2array(hist)) for hist in combocountdicts]
-	#if the input files are written as full lists:
+	# if the input files are written as full lists:
 	elif input == "full":
 		allcounts = []
 		for file in filenames:
