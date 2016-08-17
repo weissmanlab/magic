@@ -312,18 +312,15 @@ class GammaMix(scipy.stats.rv_continuous):
 		'''Fraction of IBD blocks with map length less than r/(mutation rate).'''
 		return (np.prod(self.parray, axis=1) / np.sum(np.prod(self.parray, axis=1))) @ np.power(1 + self.parray[:,2]*r, -self.parray[:,1] - 1)
 	def ne(self, t):
-		'''Inverse hazard rate ("effective population size" for pairwise coalescence time).'''
+		'''Inverse hazard rate ("effective population size" for pairwise coalescence time). Note that it is mu * N_e(mu * t).'''
 		return self.sf(t)/self.pdf(t)
-	def eg(self, trange):
-		'''Approximate N_e(t) with a piecewise exponential curve. Returns list of (time, growth rate) pairs appropriate for ms.'''
-		theta0 = (1-self.cdf(trange[0])) / self.pdf(trange[0])
-		EG = [(t0 / theta0, np.log(self.pdf(t1)/self.pdf(t0)*(1-self.cdf(t0))/(1-self.cdf(t1))) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])]
-		EG.append((trange[-1] / theta0, 0))
-		return EG
-	def ms(self, trange, L=0, rho=0, trees=False):
+	def ms(self, trange=None, points=100, L=0, rho=0, trees=False):
 		'''Produce parameter string for ms from gamma mixture parameters.'''
-		theta0 = (1-self.cdf(trange[0])) / self.pdf(trange[0])
-		eGparams = self.eg(trange)
+		if trange is None:
+			trange = np.logspace(*np.log(self.ppf([.01, .99])), points)
+		theta0 = self.ne(trange[0])
+		eGparams = [(t0 / theta0, np.log(self.ne(t0)/self.ne(t1)) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])]
+		eGparams.append((trange[-1] / theta0, 0))
 		msparams = ''
 		if trees:
 			msparams += '-T '
