@@ -78,12 +78,12 @@ It's also useful for doing further quantitative analysis of the results.
 Here's a basic example of how the remaining steps might look. 
 Say that you have used `msmc-tools` to prepare zipped vcf files of chromosome 1 from a sample of many individuals,
 with each file having a name like `<i>_chr1.vcf.gz`, 
-along with masks for covered sites with names like `covered_<i>_chr1.bed.txt.gz`,
+along with masks for covered sites with names like `covered_<i>_chr1.bed.gz`,
 where `<i>` is the label for each individual.
 Now you want to analyze this sample.
 You would run:
 
-	./combo_prep.py *_chr1.vcf.gz --coverfile chr1_cover.txt --masks covered_*_chr1.bed.txt.gz > chr1.txt
+	./combo_prep.py *_chr1.vcf.gz --coverfile chr1_cover.txt --masks covered_*_chr1.bed.gz > chr1.txt
 	
 Now you can calculate all the distributions you want without re-running this step.
 To calculate the total branch length distribution (the default), you would run:
