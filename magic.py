@@ -11,6 +11,7 @@ def chooseprint(*objects, file=sys.stdout, method='w', **kwargs):
 		if 'end' in kwargs.keys():
 			print(*objects, file=file, **kwargs)
 		else:
+			# By default, add an extra newline when printing to stdout or stderr:
 			print(*objects, file=file, end = '\n\n', **kwargs)
 	else:
 		with open(file, method) as outfile:
@@ -381,41 +382,45 @@ if __name__ == "__main__":
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full","sparse"), default="sparse")
 	args = parser.parse_args()
 
-	outfiles = {}
-	for key in ('LT', 'final', 'full'):
-		if args.out:
-			outfiles[key] = args.out + '_{}.txt'.format(key)
-		else:
-			outfiles[key] = sys.stdout
-			
-	# redirect warnings to the 'full' file:
+	# Set up the output:
 	if args.out:
-		def warn2file(message, category, filename, lineno, file=args.out+'_full.txt', line=None):
+		outfiles = {key: args.out + '_{}.txt'.format(key) for key in ('LT', 'final')}
+		outfiles['log'] = args.out + '.log'
+		# redirect warnings to the logfile:
+		def warn2file(message, category, filename, lineno, file=args.out+'.log', line=None):
 			'''Print warning to a file instead of sys.stderr'''
 			with open(file, 'a') as warnfile:
 				print(warnings.formatwarning(message, category, filename, lineno), file=warnfile)
 		warnings.showwarning = warn2file
-	
+	else:
+		outfiles = {key: sys.stdout for key in ('LT', 'final')}
+		outfiles['log'] = sys.stderr
+
+	# Import the diversity histograms:
 	counts = extract_counts(args.countfiles, args.input)
 	for scale, count in enumerate(counts):
 		count.bases = args.baselength * 2**scale
 		count.coverage = args.coverage
 			
+	# Infer the Laplace transform from the diversity histograms:
 	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
 	
+	# Output the Laplace transform:
 	if args.LT:
 		LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
 		chooseprint(LTstring, file=outfiles['LT'])
 		if args.LT == 'only':
 			sys.exit()
-
+			
+	# Infer the distribution from the Laplace transform:
 	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
 	
-	chooseprint(GParams, file=outfiles['full'])
+	chooseprint(GParams, file=outfiles['log'])
 	
+	# Output the distribution:
 	try:
 		GP = GParams.x # syntax if we're getting full output from basinhopping
 	except:
