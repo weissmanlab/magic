@@ -23,7 +23,7 @@ in Python, and is designed to be modular, so you are encouraged to edit and add 
 ## Basic workflow
 
 1. Pre-process the data using [msmc-tools](http://github.com/stschiff/msmc-tools) to produce vcf files and masks.
-2. Use [combo_prep.py](#combopreppy) to convert these into a list of SNPs and a sequencing coverage file.
+2. Use [combo_prep.py](#combo_preppy) to convert these into a list of SNPs and a sequencing coverage file.
 3. Use [windower.py](#windowerpy) to filter the SNPs for those that are informative about the desired coalescence times, and find their distribution across genomic windows.
 4. Use [magic.py](#magicpy) to infer the distribution of coalescence times from the window diversity distributions.
 5. Plot the results with [magicplots.ipynb](#magicplotsipynb).
