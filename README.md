@@ -11,13 +11,13 @@ in Python, and is designed to be modular, so you are encouraged to edit and add 
 
 ## Requirements
 - [Python 3.4+](http://www.python.org)
-- [Scipy](http://www.scipy.org/) (including Numpy)
+- [SciPy](http://www.scipy.org/) (including NumPy)
 - [msmc-tools](http://github.com/stschiff/msmc-tools)
 - Optional, just for plotting and interactive analysis:
 	- [Jupyter](http://www.jupyter.org)
 	- [matplotlib](http://matplotlib.org/)
 
-[Anaconda](http://www.continuum.io) is an easy way to install Python, Scipy, Jupyter, and matplotlib together, along with a lot of other stuff.
+[Anaconda](http://www.continuum.io) is an easy way to install Python, SciPy, Jupyter, and matplotlib together, along with a lot of other stuff.
 
 
 ## Basic workflow
@@ -146,6 +146,8 @@ These points are the underlying data used to fit the mixture of gamma distributi
 and are useful in their own right for model checking.
 In each row of the file, the first entry is the
 value of the Laplace transform variable, _s_; the second is the estimated value of the Laplace transform at that point, LT{_p_}(_s_); and the third is the error in the estimation, &#963;[LT{_p_}(_s_)].
+
+Finally, `magic.py` also produces a log file (suffix `.log`) giving details of the optimization procedure. See the [SciPy documentation](http://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.OptimizeResult.html) for the interpretation.
 
 ## magicplots.ipynb
 
