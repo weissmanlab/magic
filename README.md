@@ -100,7 +100,7 @@ The basic syntax is:
 	./windower.py <SNP file> --stat <statistic to calculate>
 	
 This produces a file (by default with suffix `_counts.txt`) with one line for each length scale, starting from the shortest.
-Each line consists of a number of comma-separated entries $$$n\ k_n$$$, where $$$n$$$ is a number of SNPs and $$$k_n$$$ is the number of windows of that length that contain $$$n$$$ SNPs.
+Each line consists of a number of comma-separated entries _n\ k_n_, where _n_ is a number of SNPs and _k_n_ is the number of windows of that length that contain _n_ SNPs.
 
 ### Specifying features to estimate
 
@@ -111,8 +111,8 @@ For example, the set of all branches above cherries corresponds to doubleton SNP
 There are a few default options for tree features built into `windower.py`:
 
 - `tbl` (default): Total branch length (all polymorphisms). To find the pairwise coalescence time distribution, run `windower.py` on each (diploid) individual with this option, and then run `magic.py` on all the outputs together. (Note the factor of 2 difference between the pairwise T<sub>MRCA</sub> and the pairwise TBL though.)
-- `indiv_tips`: Length of tips above each individual (singletons, separated by individual). For a sample of $$$n$$$ individuals, this will return $$$n$$$ output files, one for each individual. Run `magic.py` separately on each of these outputs to find the distribution of tip lengths above each individual, or on all of them together to find the combined distribution across all individuals.
-- Integer $$$j$$$: Length of branches lying above exactly $$$j$$$ haplotypes in the unrooted tree (SNPs where minor allele has $$$j$$$ copies). Running `magic.py` on the output will give a more powerful version of the (folded) site-frequency spectrum. While the site-frequency spectrum just gives the mean length of the corresponding set of tree branches, this will give the full distribution of lengths.
+- `indiv_tips`: Length of tips above each individual (singletons, separated by individual). For a sample of _n_ individuals, this will return _n_ output files, one for each individual. Run `magic.py` separately on each of these outputs to find the distribution of tip lengths above each individual, or on all of them together to find the combined distribution across all individuals.
+- Integer _j_: Length of branches lying above exactly _j_ haplotypes in the unrooted tree (SNPs where minor allele has _j_ copies). Running `magic.py` on the output will give a more powerful version of the (folded) site-frequency spectrum. While the site-frequency spectrum just gives the mean length of the corresponding set of tree branches, this will give the full distribution of lengths.
 
 The idea, though, is that you can easily write your own filter for the features you want to know about.
 The defaults all work with unphased, unpolarized data, so if you want to take advantage of the 
@@ -138,14 +138,14 @@ desired time is exactly 0.
 (This is expected for many tree features, e.g.,
 branches that lie over exactly 1/3 of the haplotypes in the sample; 
 for these features you can force `magic.py` to include this line using the optional argument `--zero`.)
-All times are normalized with the per-base mutation rate, so, for example, $$$0.001$$$ means $$$0.001/\mu$$$.
+All times are normalized with the per-base mutation rate, so, for example, 0.001 means 0.001/&#956;.
 
 Additionally, `magic.py` produces a file with the suffix `_LT.txt`
 giving the Laplace transform of the distribution at a discrete set of points.
 These points are the underlying data used to fit the mixture of gamma distributions, 
 and are useful in their own right for model checking.
-Each row of the file is of the form 
-$$$s \ \ \tilde p(s) \ \ \sigma(\tilde p(s))$$$: a value of the Laplace transform variable, the estimated value of the Laplace transform at that point, and the error in the estimation.
+In each row of the file, the first entry is the
+value of the Laplace transform variable, _s_; the second is the estimated value of the Laplace transform at that point, LT{_p_}(_s_); and the third is the error in the estimation, &#963;[LT{_p_}(_s_)].
 
 ## magicplots.ipynb
 
