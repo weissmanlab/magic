@@ -70,9 +70,9 @@ Change the variable names to `stats = ["chr1", "genome", "chr1_ttip"]` and `pair
 
 
 
+# Component scripts
 
-
-# combo\_prep.py
+## combo\_prep.py
 
 This is an enhanced version of msmc-tools' [generate\_multihetsep.py](https://github.com/stschiff/msmc-tools/blob/master/generate_multihetsep.py).
 It takes the same input formats and returns the [same list of SNPs](https://github.com/stschiff/msmc/blob/master/guide.md#input-file-format), ready for MSMC.
@@ -87,7 +87,7 @@ Whereas with `generate_multihetsep.py` you would enter multiple masks as `--mask
 with `combo_prep.py` this would be `--masks mask1 mask2 ...`, which reduces redundancy and works better with globbing, etc.
 Note that this means that these arguments must come *after* the vcf files in the command line -- see the [example](#example).
 
-# windower.py
+## windower.py
 
 This performs the feature-specific part of the data preparation. 
 Given a desired coalescence time feature (e.g., pairwise time or total branch length), it first filters all the SNPs for the ones that are relevant for that time.
@@ -120,7 +120,7 @@ extra information provided by phasing or polarization, you'll *have* to do write
 
 
 
-# magic.py
+## magic.py
 
 This is where MAGIC infers the coalescence time distributions from the genomic diversity.
 The basic syntax is:
@@ -147,7 +147,7 @@ and are useful in their own right for model checking.
 Each row of the file is of the form 
 $$$s \ \ \tilde p(s) \ \ \sigma(\tilde p(s))$$$: a value of the Laplace transform variable, the estimated value of the Laplace transform at that point, and the error in the estimation.
 
-# magicplots.ipynb
+## magicplots.ipynb
 
 If you have [Jupyter](http://jupyter.org/) installed, this is a template for making a notebook
 with plots of the distributions produced by MAGIC. 
