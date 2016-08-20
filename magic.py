@@ -52,7 +52,7 @@ class ProbPoint:
 
 class Histogram:
 	def __init__(self, counts):
-		self.counts = counts
+		self.counts = np.array(counts)
 		self.n_obs = sum(counts)
 		self.tot_hits = np.arange(len(counts)) @ counts
 		if self.n_obs:
