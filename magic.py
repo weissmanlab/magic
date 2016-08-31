@@ -111,7 +111,7 @@ class SNPHistogram(Histogram):
 		return lt
 
 
-def sigmoid(x, yleft, yright, xmid, slope, alpha=1):
+def sigmoid(x, yleft=1, yright=0, xmid=0, slope=1, alpha=1):
 	'''Sigmoid function (generalized logistic curve).'''
 	return yleft + (yright - yleft) * scipy.special.expit(slope * (x - xmid))**alpha
 
@@ -150,26 +150,24 @@ def sigmoid_fit(points, anchor=None):
 
 
 def h0e(LTLpts, extrapolation=.5, anchor=None):
-	'''Infer the pointwise LT with error at s given an array of estimates based on different window sizes.'''
+	'''Infer the pointwise LT with error at s given a list of estimates based on different window sizes.'''
 	if len(LTLpts) < 4 : #not going to be able to fit sigmoid
 		return None
+	# first fitting to find threshold where LT approaches small-scale value:
 	fit = sigmoid_fit(LTLpts, anchor=anchor)
 	if fit:
 		if anchor:
 			yleft, xmid, slope, alpha = fit[0]
 		else:
 			yleft, yright, xmid, slope = fit[0]
+		# if we have enough points, do second fitting with just the short-scale points to focus in on left asymptote:
+		shortLTLpts = [ltl for ltl in LTLpts if ltl[0] < xmid]
+		if len(shortLTLpts) >= 4:
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
 		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
-# 			# check that inferred asymptote is not that far from linear extrapolation:
-# 			for pt1, pt2 in zip(LTLpts, LTLpts[1:]):
-# 				if np.abs(pt1[1] - pt1[0] * (pt2[1]-pt1[1]) / (pt2[0]-pt1[0]) - yleft) < yleft * (1-yleft) * extrapolation / 1:
-# 					break
-# 			else:
-# 				return None
 			# check that we have a valid probability:
 			try:
-				pt = ProbPoint(yleft, np.sqrt(fit[1][0][0]))
+				pt = ProbPoint(fit[0][0], np.sqrt(fit[1][0][0]))
 			except:
 				return None
 			if pt.check():

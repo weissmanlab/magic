@@ -2,3 +2,5 @@
 *.pyc
 
 .ipynb_checkpoints/magicplots-checkpoint.ipynb
+
+.DS_Store
