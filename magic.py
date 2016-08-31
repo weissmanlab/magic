@@ -163,6 +163,7 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 		# if we have enough points, do second fitting with just the short-scale points to focus in on left asymptote:
 		shortLTLpts = [ltl for ltl in LTLpts if ltl[0] < xmid]
 		if len(shortLTLpts) >= 4:
+			fit = sigmoid_fit(shortLTLpts, anchor=anchor)
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
 		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
 			# check that we have a valid probability:
