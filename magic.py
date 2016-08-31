@@ -161,7 +161,7 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 		else:
 			yleft, yright, xmid, slope = fit[0]
 		# if we have enough points, do second fitting with just the short-scale points to focus in on left asymptote:
-		shortLTLpts = [ltl for ltl in LTLpts if ltl[0] < xmid]
+		shortLTLpts = [ltl for i, ltl in enumerate(LTLpts) if ltl[0] < xmid and i < 6]
 		if len(shortLTLpts) >= 4:
 			fit = sigmoid_fit(shortLTLpts, anchor=anchor)
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
