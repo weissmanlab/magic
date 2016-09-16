@@ -160,9 +160,13 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 			yleft, xmid, slope, alpha = fit[0]
 		else:
 			yleft, yright, xmid, slope = fit[0]
-		# if we have enough points, do second fitting with just the short-scale points to focus in on left asymptote:
-		shortLTLpts = [ltl for i, ltl in enumerate(LTLpts) if ltl[0] < xmid and i < 6]
-		if len(shortLTLpts) >= 4:
+		# if we have enough points on both sides of the midpoint, do second fitting with just the short-scale points to focus in on left asymptote:
+		shortLTLpts = [ltl for ltl in LTLpts if ltl[0] < xmid]
+		longLTLpts = [ltl for ltl in LTLpts if ltl[0] > xmid]
+		if len(shortLTLpts) >= 4 and len(longLTLpts) > 2:
+			# if we have lots of short-scale points, we can restrict even further:
+			while len(shortLTLpts) > 6 and (xmid - shortLTLpts[-1][0]) * slope < 1:
+				shortLTLpts.pop()
 			fit = sigmoid_fit(shortLTLpts, anchor=anchor)
 		# check that we have data close to left asymptote (ie, not extrapolating too much):
 		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
@@ -244,7 +248,9 @@ class GammaParamStep(object):
 		return gp
 		
 
-def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=False, guess=None, npieces=None, bndries=None, m=None, T=None, niter=100, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=True, guess=None, npieces=None, bndries=None, m=None, T=None, niter=100, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+	if len(mLTobs) < 2:
+		sys.exit("Unable to infer enough of the Laplace transform to invert.")
 	if guess is None:
 		if zeroPt:
 			if npieces is None:
@@ -294,7 +300,8 @@ class GammaMix(scipy.stats.rv_continuous):
 		return np.sum(self.params[i] * np.power(1 + self.params[i+2]*s, -self.params[i+1]) if i<len(self.params)-2 else self.params[i] for i in range(0, len(self.params), 3))
 	def blcdf(self, r):
 		'''Fraction of IBD blocks with map length less than r/(mutation rate).'''
-		return (np.prod(self.parray, axis=1) / np.sum(np.prod(self.parray, axis=1))) @ np.power(1 + self.parray[:,2]*r, -self.parray[:,1] - 1)
+		return np.sum(np.prod(component) * np.power(1 + r*component[2], -component[1] - 1) for component in self.parray) / np.sum(np.prod(self.parray, axis=1))
+		# return (np.prod(self.parray, axis=1) / np.sum(np.prod(self.parray, axis=1))) @ np.power(1 + self.parray[:,2]*r, -self.parray[:,1] - 1)
 	def ne(self, t):
 		'''Inverse hazard rate ("effective population size" for pairwise coalescence time). Note that it is mu * N_e(mu * t).'''
 		return self.sf(t)/self.pdf(t)
@@ -415,7 +422,7 @@ if __name__ == "__main__":
 			sys.exit()
 			
 	# Infer the distribution from the Laplace transform:
-	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, fullout=True)
+	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun)
 	
 	chooseprint(GParams, file=outfiles['log'])
 	
@@ -439,7 +446,7 @@ if __name__ == "__main__":
 	
 	nicestring = '\n'.join(' '.join(str(x) for x in component) for component in niceparams)
 	if wzero:
-		nicestring += ' ' + str(wzero)
+		nicestring += '\n' + str(wzero)
 	
 	chooseprint(nicestring, file=outfiles['final'])
 
