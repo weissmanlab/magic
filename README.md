@@ -100,7 +100,7 @@ The basic syntax is:
 	./windower.py <SNP file> --stat <statistic to calculate>
 	
 This produces a file (by default with suffix `_counts.txt`) with one line for each length scale, starting from the shortest.
-Each line consists of a number of comma-separated entries _n\ k_n_, where _n_ is a number of SNPs and _k_n_ is the number of windows of that length that contain _n_ SNPs.
+Each line consists of a number of comma-separated entries `n k_n`, where `n` is a number of SNPs and `k_n` is the number of windows of that length that contain `n` SNPs.
 
 ### Specifying features to estimate
 
