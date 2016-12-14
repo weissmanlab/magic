@@ -180,7 +180,7 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 	return None
 	
 		
-def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True):
+def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True, ltstep=0.05):
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
 	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
@@ -196,7 +196,7 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 			return pe
 	if svals is not None:  # list of desired s values provided
 		allSLT = [s2pt(s) for s in svals]
-		return np.array([slt for slt in allSLT if slt.check(emax=emax0)])
+		return np.array([slt for slt in allSLT if slt and slt.check(emax=emax0)])
 	else:  # need to determine appropriate s values
 		# start with a LT variable value that should have a nice curve
 		s = 0.1 / counts[0].theta()
@@ -219,7 +219,31 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 				allSLT.append(slt)
 			else:
 				failures += 1
-		return np.array([slt.xpe() for slt in allSLT if slt.check(emax=emax0)])
+		# remove any points where the error bars exceed our tolerance:
+		SLT = [slt for slt in allSLT if slt.check(emax=emax0)]
+		# go back and fill in gaps where LT changed a lot between successive points
+		# limit the number of points that can be added between any pair to avoid possible infinite loops caused by bad points
+		maxadd = 5
+		i = 0
+		while i < len(SLT) - 1:
+			added = 0
+			# print(SLT[i].p - SLT[i+1].p)
+			while SLT[i].p > SLT[i+1].p + ltstep and added < maxadd:
+				# add a point in between them
+				# make a list of possible s-values in case the first doesn't work
+				smids = np.logspace(np.log10(SLT[i].x), np.log10(SLT[i+1].x), num=3, endpoint=False)
+				# start from the middle and work our way out
+				order = np.argsort(np.abs(2 * np.log(smids) - np.log(SLT[i].x) - np.log(SLT[i+1].x)))
+				for j in order:
+					slt = s2pt(smids[j])
+					if slt and slt.check(emax=emax0):
+						SLT.insert(i+1, slt)
+						added += 1
+						break
+				else: # give up on filling this gap, move on to the next one
+					break
+			i += 1
+		return np.array([slt.xpe() for slt in SLT if slt.check(emax=emax0)])
 
 	
 # Inferring a mixture of gamma distributions:
@@ -398,9 +422,12 @@ if __name__ == "__main__":
 			with open(file, 'a') as warnfile:
 				print(warnings.formatwarning(message, category, filename, lineno), file=warnfile)
 		warnings.showwarning = warn2file
+		# log the initial command:
+		chooseprint(' '.join(sys.argv), file=outfiles['log'])
 	else:
 		outfiles = {key: sys.stdout for key in ('LT', 'final')}
 		outfiles['log'] = sys.stderr
+
 
 	# Import the diversity histograms:
 	counts = extract_counts(args.countfiles, args.input)
