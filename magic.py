@@ -403,6 +403,7 @@ if __name__ == "__main__":
 	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
 	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
+	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
 	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values.", default=True)
@@ -436,7 +437,7 @@ if __name__ == "__main__":
 		count.coverage = args.coverage
 			
 	# Infer the Laplace transform from the diversity histograms:
-	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation)
+	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=ltstep)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
