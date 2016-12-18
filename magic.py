@@ -223,22 +223,19 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 		SLT = [slt for slt in allSLT if slt.check(emax=emax0)]
 		# go back and fill in gaps where LT changed a lot between successive points
 		# limit the number of points that can be added between any pair to avoid possible infinite loops caused by bad points
-		maxadd = 5
+		min_s_ratio = sratio**0.2
 		i = 0
 		while i < len(SLT) - 1:
-			added = 0
-			# print(SLT[i].p - SLT[i+1].p)
-			while SLT[i].p > SLT[i+1].p + ltstep and added < maxadd:
+			while SLT[i].p > SLT[i+1].p + ltstep and SLT[i+1].x/SLT[i].x > min_s_ratio:
 				# add a point in between them
 				# make a list of possible s-values in case the first doesn't work
-				smids = np.logspace(np.log10(SLT[i].x), np.log10(SLT[i+1].x), num=3, endpoint=False)
+				smids = np.logspace(np.log10(SLT[i].x), np.log10(SLT[i+1].x), num=3, endpoint=False)[1:]
 				# start from the middle and work our way out
 				order = np.argsort(np.abs(2 * np.log(smids) - np.log(SLT[i].x) - np.log(SLT[i+1].x)))
 				for j in order:
 					slt = s2pt(smids[j])
 					if slt and slt.check(emax=emax0):
 						SLT.insert(i+1, slt)
-						added += 1
 						break
 				else: # give up on filling this gap, move on to the next one
 					break
