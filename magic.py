@@ -437,7 +437,7 @@ if __name__ == "__main__":
 		count.coverage = args.coverage
 			
 	# Infer the Laplace transform from the diversity histograms:
-	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=ltstep)
+	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=args.ltstep)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
