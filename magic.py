@@ -149,7 +149,7 @@ def sigmoid_fit(points, anchor=None):
 
 
 
-def h0e(LTLpts, extrapolation=.5, anchor=None):
+def h0e(LTLpts, extrapolation=.5, anchor=None, return_full=False):
 	'''Infer the pointwise LT with error at s given a list of estimates based on different window sizes.'''
 	if len(LTLpts) < 4 : #not going to be able to fit sigmoid
 		return None
@@ -176,11 +176,14 @@ def h0e(LTLpts, extrapolation=.5, anchor=None):
 			except:
 				return None
 			if pt.check():
-				return pt
+				if return_full:
+					return fit
+				else:
+					return pt
 	return None
 	
 		
-def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True, ltstep=0.05):
+def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0, pmax=1, emax0=.1, extrapolation=.5, failtol=2, anchor=True, ltstep=0.05, min_s_pow=0.2):
 	'''From diversity histograms across a range of window lengths, calculate the Laplace transform of the coalescence time distribution at a range of points'''
 	# define function h0e(s) = [s, LT{p_T}(s), error]:
 	def s2pt(s):
@@ -198,6 +201,8 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 		allSLT = [s2pt(s) for s in svals]
 		return np.array([slt for slt in allSLT if slt and slt.check(emax=emax0)])
 	else:  # need to determine appropriate s values
+		if sratio <= 1:
+			sys.exit("Error: sratio must be > 1.")
 		# start with a LT variable value that should have a nice curve
 		s = 0.1 / counts[0].theta()
 		allSLT = [s2pt(s)]
@@ -223,13 +228,13 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 		SLT = [slt for slt in allSLT if slt.check(emax=emax0)]
 		# go back and fill in gaps where LT changed a lot between successive points
 		# limit the number of points that can be added between any pair to avoid possible infinite loops caused by bad points
-		min_s_ratio = sratio**0.2
+		min_s_ratio = sratio**min_s_pow
 		i = 0
 		while i < len(SLT) - 1:
 			while SLT[i].p > SLT[i+1].p + ltstep and SLT[i+1].x/SLT[i].x > min_s_ratio:
 				# add a point in between them
 				# make a list of possible s-values in case the first doesn't work
-				smids = np.logspace(np.log10(SLT[i].x), np.log10(SLT[i+1].x), num=3, endpoint=False)[1:]
+				smids = np.logspace(np.log10(SLT[i].x), np.log10(SLT[i+1].x), num=4, endpoint=False)[1:]
 				# start from the middle and work our way out
 				order = np.argsort(np.abs(2 * np.log(smids) - np.log(SLT[i].x) - np.log(SLT[i+1].x)))
 				for j in order:
