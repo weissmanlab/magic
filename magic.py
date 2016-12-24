@@ -105,9 +105,9 @@ class SNPHistogram(Histogram):
 		'''Estimated LaplaceTransform{p_T}(s), with error.'''
 		return self.gfe(1 - s/(self.bases * self.coverage))
 	def ltle(self, s):
-		'''Estimated LaplaceTransform{p_T}(s), with error and log(#bases) as ordinate.'''
+		'''Estimated LaplaceTransform{p_T}(s), with error and log_2(#bases) as ordinate.'''
 		lt = self.gfe(1 - s/(self.bases * self.coverage))
-		lt.x = np.log(self.bases)
+		lt.x = np.log2(self.bases)
 		return lt
 
 
