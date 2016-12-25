@@ -334,7 +334,7 @@ class GammaMix(scipy.stats.rv_continuous):
 	def ms(self, trange=None, points=100, L=0, rho=0, trees=False):
 		'''Produce parameter string for ms from gamma mixture parameters.'''
 		if trange is None:
-			trange = np.logspace(*np.log(self.ppf([.01, .99])), points)
+			trange = self.ppf(np.linspace(1/(points+1), 1, points, endpoint=False))
 		theta0 = self.ne(trange[0])
 		eGparams = [(t0 / theta0, np.log(self.ne(t0)/self.ne(t1)) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])]
 		eGparams.append((trange[-1] / theta0, 0))
