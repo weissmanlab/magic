@@ -311,7 +311,7 @@ class GammaMix(scipy.stats.rv_continuous):
 	'''Mixture of gamma distributions and optionally a discrete mass at 0.'''
 	def __init__(self, params):
 		scipy.stats.rv_continuous.__init__(self, a=0)
-		self.params = np.copy(params)
+		self.params = np.ravel(np.copy(params))
 		self.params[::3] /= np.sum(self.params[::3])
 		self.parray = np.copy(self.params[:3*(len(self.params)//3)]) #leave off any trailing weight at t=0
 		self.parray.shape = (len(self.parray)//3, 3)
