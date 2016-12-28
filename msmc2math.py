@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 TCs = []
 
-with open(args.msmc + '_out.final.txt','r') as infile:
+with open(args.msmc + '.final.txt','r') as infile:
 	# skip the header
 	for line in infile:
 		if not line.startswith('time'):
