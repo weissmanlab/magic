@@ -413,6 +413,8 @@ if __name__ == "__main__":
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full","sparse"), default="sparse")
+	# parser.add_argument("--sratio", type=float, default=np.sqrt(2))
+	# parser.add_argument("--min_s_pow", type=float, default=0.2)
 	args = parser.parse_args()
 
 	# Set up the output:
@@ -439,7 +441,7 @@ if __name__ == "__main__":
 		count.coverage = args.coverage
 			
 	# Infer the Laplace transform from the diversity histograms:
-	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=args.ltstep)
+	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=args.ltstep, sratio=args.sratio, min_s_pow=args.min_s_pow)
 	
 	if SLTpts is None:
 		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
@@ -454,7 +456,7 @@ if __name__ == "__main__":
 	# Infer the distribution from the Laplace transform:
 	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun)
 	
-	chooseprint(GParams, file=outfiles['log'])
+	chooseprint(GParams, file=outfiles['log'], method='a')
 	
 	# Output the distribution:
 	try:
