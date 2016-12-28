@@ -329,7 +329,7 @@ class GammaMix(scipy.stats.rv_continuous):
 		return np.sum(np.prod(component) * np.power(1 + r*component[2], -component[1] - 1) for component in self.parray) / np.sum(np.prod(self.parray, axis=1))
 		# return (np.prod(self.parray, axis=1) / np.sum(np.prod(self.parray, axis=1))) @ np.power(1 + self.parray[:,2]*r, -self.parray[:,1] - 1)
 	def ne(self, t):
-		'''Inverse hazard rate ("effective population size" for pairwise coalescence time). Note that it is mu * N_e(mu * t).'''
+		'''Inverse hazard rate ("effective population size" for pairwise coalescence time, but note that it is 4 * mu * N_e(2 * mu * t)).'''
 		return self.sf(t)/self.pdf(t)
 	def ms(self, trange=None, points=100, L=0, rho=0, trees=False):
 		'''Produce parameter string for ms from gamma mixture parameters.'''
