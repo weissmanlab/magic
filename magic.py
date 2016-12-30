@@ -321,6 +321,8 @@ class GammaMix(scipy.stats.rv_continuous):
 	def _cdf(self, t):
 		#include possibility for delta functions at 0
 		return np.sum(self.params[i] * scipy.stats.gamma.cdf(t, self.params[i+1], scale=self.params[i+2]) if (i<len(self.params)-2 and np.prod(self.params[i:i+3])) else self.params[i] for i in range(0,len(self.params),3))
+	def _sf(self, t):
+		return 1 - self._cdf(t)
 	def lt(self, s):
 		'''Laplace transform evaluated at s.'''
 		return np.sum(self.params[i] * np.power(1 + self.params[i+2]*s, -self.params[i+1]) if i<len(self.params)-2 else self.params[i] for i in range(0, len(self.params), 3))
@@ -335,15 +337,16 @@ class GammaMix(scipy.stats.rv_continuous):
 		'''Produce parameter string for ms from gamma mixture parameters.'''
 		if trange is None:
 			trange = self.ppf(np.linspace(1/(points+1), 1, points, endpoint=False))
-		theta0 = self.ne(trange[0])
-		eGparams = [(t0 / theta0, np.log(self.ne(t0)/self.ne(t1)) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])]
-		eGparams.append((trange[-1] / theta0, 0))
+		theta0 = -trange[0] / np.log1p(-self.cdf(trange[0]))
+		Nparams = [(trange[0] / theta0, self.ne(trange[0]) / theta0)]
+		Nparams.extend([(t0 / theta0, np.log(self.ne(t0)/self.ne(t1)) / (t1-t0) * theta0) for t0, t1 in zip(trange, trange[1:])])
+		Nparams.append((trange[-1] / theta0, 0))
 		msparams = ''
 		if trees:
 			msparams += '-T '
 		if L:
 			msparams += '-t {} -r {} {} -p {} '.format(L*theta0, L*theta0*rho, L, math.ceil(math.log10(L)))
-		msparams += '-eG ' + ' -eG '.join(' '.join(str(param) for param in eg) for eg in eGparams)
+		msparams += '-eN ' + ' -eG '.join(' '.join(str(param) for param in eg) for eg in Nparams)
 		return msparams
 
 
