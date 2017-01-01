@@ -4,12 +4,12 @@
 
 def rho(prefix):
 	'''finds the estimated mutation and recombination rates and returns the ratio'''
-	with open(prefix + '_out.log', 'r') as infile:
+	with open(prefix + '.log', 'r') as infile:
 		for line in infile:
 			if line.startswith('mutationRate'):
 				m0 = float(line.split()[-1])
 				break
-	with open(prefix + '_out.loop.txt', 'r') as infile:
+	with open(prefix + '.loop.txt', 'r') as infile:
 		for line in infile:
 			pass
 	r = float(line.split()[0])
@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
 	MSNeT = []
 
-	with open(args.msmc + '_out.final.txt','r') as infile:
+	with open(args.msmc + '.final.txt','r') as infile:
 		for line in infile:
 			# skip the header:
 			if not line.startswith('t'):
