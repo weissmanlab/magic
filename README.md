@@ -1,7 +1,7 @@
 MAGIC
 =======
 
-This is the implementation for Minimal Assumption Genomic Inference of Coalescence (MAGIC).
+This is the implementation for [Minimal Assumption Genomic Inference of Coalescence (MAGIC)](http://biorxiv.org/content/early/2016/10/31/084459).
 From genome sequences, MAGIC can be used to infer the distribution of pairwise coalescence times
 (i.e., "_N_<sub>e</sub>(_t_)"), as well as the distribution of lengths of any part of the coalescent trees
 (e.g., total branch length, tips, branches above cherries, etc).
