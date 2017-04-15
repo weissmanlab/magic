@@ -52,7 +52,7 @@ if __name__ == '__main__':
 	parser.add_argument("--ratio", help="Ratio between successive length scales. Must be integer", type=int, default=2)
 	parser.add_argument("--baselength", help="Smallest length scale", type=int, default=80)
 	parser.add_argument("--min_coverage", help="Minimum coverage for a window to be counted", type=float, default=0.8)
-	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up','down',None], default='down')
+	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up', 'down', 'no'], default='down')
 	parser.add_argument("--stat", help="Statistic to calculate (tbl, individual tips, folded sfs component)", default='tbl')
 	parser.add_argument("--input_form", help="Format of input", choices=['msmc','windows','reverse_windows'], default='msmc')
 	parser.add_argument("--final_windows", help="Print out the longest windows", action='store_true')
