@@ -301,7 +301,7 @@ class GammaMixStep(object):
 ## Main inference function
 
 def infer_distribution(mLTobs, method='basinhopping', family='gammamix', zeroPt=False, guess=None, npieces=None, bounds=None, 
-	m=None, T=None, smoothing=1e3, eps=1e-9, niter=50, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+	m=None, T=None, smoothing=0, eps=1e-9, niter=50, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
 	'''Infer a probability distribution from its estimated Laplace transform'''
 	if family not in ['gammamix', 'pieceexp']:
 		sys.exit("Unknown functional family for distribution.")
@@ -470,7 +470,7 @@ class PiecewiseExponential(scipy.stats.rv_continuous):
 			msparams += '-T '
 		if L:
 			msparams += '-t {} -r {} {} -p {} '.format(L * theta0, L * rho * theta0, L, math.ceil(math.log10(L)))
-		msparams += '-eN '.join('{} {} '.format(breaks[i] / theta0, rates[i] * theta0) for i in range(1, len(breaks)))
+		msparams += '-eN '.join('{} {} '.format(self.breaks[i] / theta0, self.rates[i] * theta0) for i in range(1, len(breaks)))
 		return msparams
 		
 
@@ -542,7 +542,7 @@ if __name__ == "__main__":
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
-	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=1)
+	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=0)
 	args = parser.parse_args()
 
 	# Set up the output:
