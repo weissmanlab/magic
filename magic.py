@@ -528,7 +528,7 @@ if __name__ == "__main__":
 
 	
 	parser = argparse.ArgumentParser()
-	parser.add_argument("countfiles", nargs="+", help="files with histograms of polymorphisms/window")
+	parser.add_argument("countfiles", nargs="+", help="Files with histograms of polymorphisms per window, or, if LT=start, file with Laplace transform values")
 	parser.add_argument("--out", help="Output prefix (otherwise prints to stdout)")
 	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
 	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
@@ -537,11 +537,12 @@ if __name__ == "__main__":
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
-	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values.", default=True)
+	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
 	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
+	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=1)
 	args = parser.parse_args()
 
 	# Set up the output:
@@ -560,28 +561,34 @@ if __name__ == "__main__":
 		outfiles = {key: sys.stdout for key in ('LT', 'final')}
 		outfiles['log'] = sys.stderr
 
-
-	# Import the diversity histograms:
-	counts = extract_counts(args.countfiles, args.input)
-	for scale, count in enumerate(counts):
-		count.bases = args.baselength * 2**scale
-		count.coverage = args.coverage
+	if args.LT == 'start':
+		# Import the Laplace transform:
+		if len(args.countfiles) != 1:
+			sys.exit('Error: please specify exactly one file for the Laplace transform')
+		with open(args.countfiles[0], 'r') as infile:
+			SLTpts = np.array([[float(x) for x in line.split()] for line in infile])
+	else:
+		# Import the diversity histograms:
+		counts = extract_counts(args.countfiles, args.input)
+		for scale, count in enumerate(counts):
+			count.bases = args.baselength * 2**scale
+			count.coverage = args.coverage
 			
-	# Infer the Laplace transform from the diversity histograms:
-	SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=args.ltstep)
+		# Infer the Laplace transform from the diversity histograms:
+		SLTpts = infer_slt(counts, maxHom=args.maxLT, extrapolation=args.extrapolation, ltstep=args.ltstep)
 	
-	if SLTpts is None:
-		sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
+		if SLTpts is None:
+			sys.exit("Unable to infer the Laplace transform. If you don't have any more data, you might want to try increasing the allowed extrapolation.")
 	
-	# Output the Laplace transform:
-	if args.LT:
-		LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
-		chooseprint(LTstring, file=outfiles['LT'])
-		if args.LT == 'only':
-			sys.exit()
+		# Output the Laplace transform:
+		if args.LT:
+			LTstring = '\n'.join(' '.join(str(x) for x in pt) for pt in SLTpts)
+			chooseprint(LTstring, file=outfiles['LT'])
+			if args.LT == 'only':
+				sys.exit()
 			
 	# Infer the distribution from the Laplace transform:
-	full_params = infer_distribution(SLTpts, zeroPt=args.zero, family=args.family, npieces=args.components, niter=args.iterations, maxfun=args.maxfun)
+	full_params = infer_distribution(SLTpts, zeroPt=args.zero, family=args.family, npieces=args.components, niter=args.iterations, maxfun=args.maxfun, smoothing=args.smoothing)
 	
 	# Save the full optimization result
 	chooseprint(full_params, file=outfiles['log'], method='a')
