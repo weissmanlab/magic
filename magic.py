@@ -247,8 +247,33 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 			i += 1
 		return np.array([slt.xpe() for slt in SLT if slt.check(emax=emax0)])
 
+
+
+# Inferring distributions from their Laplace transforms
+
+## Helper functions for inferring a piecewise exponential distribution
+
+def piece_exp_obj(rates, breaks, mLTobs, smoothing):
+	breakPs = np.exp(np.cumsum(np.concatenate(((0,), -np.diff(breaks) * rates[:-1]))))
+	prefactors = [breakPs * np.exp(-m * breaks) / (1 + m/rates) for m in mLTobs[:,0]]
+	postfactors = [np.concatenate( (-np.expm1(-(rates[:-1] + m) * np.diff(breaks)), (1,)) ) for m in mLTobs[:,0]]
+	return np.sum( ((prefactors[i] @ postfactors[i] - obs[1]) / obs[2])**2 for i, obs in enumerate(mLTobs) ) + smoothing * np.linalg.norm(np.diff(np.log(rates)))**2
+
 	
-# Inferring a mixture of gamma distributions:
+# class PieceExpStep(object):
+# 	def __init__(self, stepsize=0.5):
+# 		self.stepsize = stepsize
+# 	def __call__(self, rates):
+# 		s = self.stepsize
+# 		eps = 1e-8
+# 		# rates are log-normal to keep them positive
+# 		# we take steps such that the *median*, not mean, is equal to the starting value
+# 		# add eps to make sure we don't try to try to take log of 0
+# 		newrates = np.random.lognormal(np.log(rates + eps), s)
+# 		return newrates
+
+	
+## Helper functions for inferring a mixture of gamma distributions:
 
 def gamma_obj(GParams, mLTobs, zeroPt=False):
 	norm = np.sum(GParams[::3])
@@ -258,59 +283,111 @@ def gamma_obj(GParams, mLTobs, zeroPt=False):
 	else:
 		return np.linalg.norm([(GParams[::3] @ np.power(1 + GParams[2::3]*obs[0], -GParams[1::3]) / norm - obs[1]) / obs[2] for obs in mLTobs])
 
-class GammaParamStep(object):
+class GammaMixStep(object):
 	def __init__(self, stepsize=0.5):
 		self.stepsize = stepsize
 	def __call__(self, gp):
 		s = self.stepsize
 		eps = 1e-8
 		# component weights are drawn from a Dirichlet distribution to normalize them:
-		gp[::3] = np.random.dirichlet(gp[::3]/sum(gp[::3])/s)
+		gpnew[::3] = np.random.dirichlet(gp[::3]/sum(gp[::3])/s)
 		# component means and scales are log-normal to keep them positive
 		# we take steps such that the *median*, not mean, is equal to the starting value
 		# add eps to make sure we don't try to try to take log of 0
-		gp[1::3] = np.random.lognormal(np.log(gp[1::3] + eps), s)
-		gp[2::3] = np.random.lognormal(np.log(gp[2::3] + eps), s)
-		return gp
-		
+		gpnew[1::3] = np.random.lognormal(np.log(gp[1::3] + eps), s)
+		gpnew[2::3] = np.random.lognormal(np.log(gp[2::3] + eps), s)
+		return gpnew
 
-def infer_gamma_mix(mLTobs, method='basinhopping', zeroPt=False, fullout=True, guess=None, npieces=None, bndries=None, m=None, T=None, niter=100, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+## Main inference function
+
+def infer_distribution(mLTobs, method='basinhopping', family='gammamix', zeroPt=False, guess=None, npieces=None, bounds=None, 
+	m=None, T=None, smoothing=1e3, eps=1e-9, niter=50, factr=1e3, pgtol=1e-6, maxfun=1e4, maxiter=1e4):
+	'''Infer a probability distribution from its estimated Laplace transform'''
+	if family not in ['gammamix', 'pieceexp']:
+		sys.exit("Unknown functional family for distribution.")
 	if len(mLTobs) < 2:
 		sys.exit("Unable to infer enough of the Laplace transform to invert.")
-	if guess is None:
-		if zeroPt:
-			if npieces is None:
-				npieces = 1 + len(mLTobs) // 3
-			guess = np.append(np.ravel([[ 1/npieces, npieces-.1-i, 1/mLTobs[-i,0]/(npieces-.1-i)] for i in range(npieces-1)]) , 1/npieces)
-		else:
-			if npieces is None:
-				npieces = (len(mLTobs) + 1) // 3
-			guess = np.ravel([[1 / npieces, npieces - .1 - i, 1 / mLTobs[-i,0] / (npieces-.1-i)] for i in range(npieces)])
-	if bndries is None:
-		bndries = [[(0, 1), (0, None), (0, None)][x % 3] for x in range(len(guess))]
 	if m is None:
 		m = max(10, len(mLTobs)**2)
+	if family == 'gammamix':
+		func = gamma_obj
+		if guess is None:
+			if zeroPt:
+				if npieces is None:
+					npieces = 1 + len(mLTobs) // 3
+				guess = np.append(np.ravel([[ 1/npieces, npieces-.1-i, 1/mLTobs[-i,0]/(npieces-.1-i)] for i in range(npieces-1)]) , 1/npieces)
+			else:
+				if npieces is None:
+					npieces = (len(mLTobs) + 1) // 3
+				guess = np.ravel([[1 / npieces, npieces - .1 - i, 1 / mLTobs[-i,0] / (npieces-.1-i)] for i in range(npieces)])
+		if bounds is None:
+			bounds = [[(eps, 1), (eps, None), (eps, None)][x % 3] for x in range(len(guess))]
+			# eps is a small number to keep quantities that should be positive from being set exactly to 0
+		args = (mLTobs, zeroPt)
+		step = GammaMixStep()
+	elif family == 'pieceexp':
+		func = piece_exp_obj
+		if guess is None:
+			if npieces is None:
+				npieces = len(mLTobs)
+			# try to infer out to time where ~95% of genome has coalesced:
+			tmax = 1 / mLTobs[np.searchsorted(1 - mLTobs[:,1], 0.05), 0]
+			breaks = np.concatenate( ((0,), np.geomspace(0.5/mLTobs[-1,0], tmax, num=npieces-1)) )
+			guess = np.ones(npieces) * mLTobs[0,0]/(1 - mLTobs[0,1])
+		if bounds is None:
+			bounds = [(eps, None) for rate in guess]
+			# eps is a small number to keep quantities that should be positive from being set exactly to 0
+		args = (breaks, mLTobs, smoothing)
+		step = None
 	if method == 'basinhopping':
-		step = GammaParamStep()
-		if T is None:
+		if T is None: # need to set the "temperature" of the algorithm
 			# we expect the differences among peak heights to scale with the number of points being fitted:
 			T = len(mLTobs)/10
-		ans = scipy.optimize.basinhopping(gamma_obj, guess, niter=niter, T=T, take_step=step, minimizer_kwargs={"method":"L-BFGS-B", "args":(mLTobs,zeroPt), "bounds":bndries, "options": {"ftol":factr*1e-17, "gtol":pgtol, "maxfun":maxfun, "maxiter":maxiter, "maxcor":m}},)
-		if fullout:
-			return ans
-		else:
-			return [ans.x, ans.fun]
+		ans = scipy.optimize.basinhopping(func, guess, niter=niter, T=T, take_step=step, minimizer_kwargs={"method":"L-BFGS-B", 
+			"args":args, "bounds":bounds, "options": {"ftol":factr*1e-17, "gtol":pgtol, "maxfun":maxfun, "maxiter":maxiter, "maxcor":m}},)
+		if family == 'pieceexp':
+			ans.x = np.stack((breaks, ans.x)) # return the breakpoints along with the rates
 	else:
-		return scipy.optimize.fmin_l_bfgs_b(gamma_obj, guess, args=(mLTobs,zeroPt), approx_grad=True, bounds=bndries, factr=factr, pgtol=pgtol, maxfun=maxfun, maxiter=maxiter, m=m)
+		ans = list(scipy.optimize.fmin_l_bfgs_b(func, guess, args=args, approx_grad=True, bounds=bounds, factr=factr, pgtol=pgtol, maxfun=maxfun, maxiter=maxiter, m=m))
+		if family == 'pieceexp':
+			ans[0] = np.stack((breaks, ans[0])) # return the breakpoints along with the rates
+	return ans
+	
+def clean_parameters(ans, args):
+	'''Extract parameter values of a distribution from the output of infer_distribution'''
+	try:
+		params = ans.x # if we're getting full output from basinhopping
+	except:
+		params = ans[0] # if we just did L-BFGS-B
+	if args.family == 'gammamix':
+		norm = np.sum(params[::3])
+		niceparams = [params[i:i+3]/[norm,1,1] for i in range(0, len(params)-1, 3) if all(params[i:i+3])]
+		#niceparams doesn't include any mass at zero yet; calculate it separately:
+		wzero = 0
+		for i in range(0, len(params)-1, 3):
+			if any(params[i+1:i+3]==0):
+				# this corresponds to a point mass at 0
+				wzero += params[i]/norm
+		if args.zero:
+			# assumed mass at 0
+			wzero += params[-1]/norm
+		if wzero:
+			niceparams += [wzero,]
+	elif args.family == 'pieceexp':
+		niceparams = np.transpose(params)
+	return niceparams
+		
+	
 
 
+# Probability distributions:
 
-# Gamma mixture distributions:
+## Gamma mixture distributions:
 
 class GammaMix(scipy.stats.rv_continuous):
 	'''Mixture of gamma distributions and optionally a discrete mass at 0.'''
 	def __init__(self, params):
-		scipy.stats.rv_continuous.__init__(self, a=0)
+		scipy.stats.rv_continuous.__init__(self, a=0) # says that distribution is bounded below by 0
 		self.params = np.ravel(np.copy(params))
 		self.params[::3] /= np.sum(self.params[::3])
 		self.parray = np.copy(self.params[:3*(len(self.params)//3)]) #leave off any trailing weight at t=0
@@ -348,6 +425,54 @@ class GammaMix(scipy.stats.rv_continuous):
 			msparams += '-t {} -r {} {} -p {} '.format(L*theta0, L*theta0*rho, L, math.ceil(math.log10(L)))
 		msparams += '-eN ' + ' -eG '.join(' '.join(str(param) for param in eg) for eg in Nparams)
 		return msparams
+
+## Piecewise exponential distributions:
+		
+class PiecewiseExponential(scipy.stats.rv_continuous):
+	"Piecewise-exponential probability distribution"
+	def __init__(self, breaks, rates):
+		scipy.stats.rv_continuous.__init__(self, a=0) # says that distribution is bounded below by 0
+		self.breaks = np.copy(breaks)
+		self.rates = np.copy(rates)
+		if len(rates) != len(breaks):
+			if len(rates) == len(breaks) + 1 and breaks[0] > 0:
+				self.breaks = np.concatenate( ((0,), self.breaks) )
+			else:
+				raise Exception("Breaks and rates must match")
+		self.breakPs = np.exp(np.cumsum(np.concatenate(((0,), -np.diff(self.breaks) * self.rates[:-1])))) # the survival function evaluated at the breakpoints
+	def _pdf(self, t):
+		i = np.searchsorted(self.breaks, t, side='right') - 1
+		return self.rates[i] * self.breakPs[i] * np.exp(-self.rates[i] * (t - self.breaks[i]))
+	def _sf(self, t):
+		i = np.searchsorted(self.breaks, t, side='right') - 1
+		return self.breakPs[i] * np.exp(-self.rates[i] * (t - self.breaks[i]))
+	def _cdf(self, t):
+		return 1 - self._sf(t)
+	def lt(self, s):
+		'''Laplace transform evaluated at s.'''
+		prefactors = self.breakPs * np.exp(-s * self.breaks) / (1 + s/self.rates)
+		postfactors = np.concatenate( (-np.expm1(-(self.rates[:-1] + s) * np.diff(self.breaks)), (1,)) )
+		return prefactors @ postfactors
+	def blcdf(self, r):
+		'''Fraction of IBD blocks with map length less than r/(mutation rate).'''
+		prefactors = self.breakPs * np.exp(-r * self.breaks) / (1 + r/self.rates)
+		postfactors = self.breaks + 1 / (r + self.rates)
+		postfactors[:-1] -= (1 / (r + self.rates[:-1]) + self.breaks[1:]) * np.exp(-(r + self.rates[-1]) * np.diff(self.breaks))
+		return prefactors @ postfactors / self.mean()
+	def ne(self, t):
+		'''Inverse hazard rate ("effective population size" for pairwise coalescence time, but note that it is 4 * mu * N_e(2 * mu * t)).'''
+		return 1 / self.rates[np.searchsorted(self.breaks, t, side='right') - 1]
+	def ms(self, L=0, rho=0, trees=False):
+		'''Produce parameter string for ms.'''
+		theta0 = 1 / self.rates[0]
+		msparams = ''
+		if trees:
+			msparams += '-T '
+		if L:
+			msparams += '-t {} -r {} {} -p {} '.format(L * theta0, L * rho * theta0, L, math.ceil(math.log10(L)))
+		msparams += '-eN '.join('{} {} '.format(breaks[i] / theta0, rates[i] * theta0) for i in range(1, len(breaks)))
+		return msparams
+		
 
 
 # Processing windower output:
@@ -410,12 +535,13 @@ if __name__ == "__main__":
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
 	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
+	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
 	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values.", default=True)
-	parser.add_argument("--components", help="Number of components to fit in gamma mixture", type=int, default=None)
+	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
-	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full","sparse"), default="sparse")
+	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
 	args = parser.parse_args()
 
 	# Set up the output:
@@ -455,33 +581,13 @@ if __name__ == "__main__":
 			sys.exit()
 			
 	# Infer the distribution from the Laplace transform:
-	GParams = infer_gamma_mix(SLTpts, zeroPt=args.zero, npieces=args.components, niter=args.iterations, maxfun=args.maxfun)
+	full_params = infer_distribution(SLTpts, zeroPt=args.zero, family=args.family, npieces=args.components, niter=args.iterations, maxfun=args.maxfun)
 	
-	chooseprint(GParams, file=outfiles['log'], method='a')
+	# Save the full optimization result
+	chooseprint(full_params, file=outfiles['log'], method='a')
 	
-	# Output the distribution:
-	try:
-		GP = GParams.x # syntax if we're getting full output from basinhopping
-	except:
-		GP = GParams[0] # syntax if we just did L-BFGS-B or summarized output
-	norm = np.sum(GP[::3])
-	niceparams = [GP[i:i+3]/[norm,1,1] for i in range(0, len(GP)-1, 3) if all(GP[i:i+3])]
-	#niceparams doesn't include any mass at zero
-	#calculate it separately:
-	wzero = 0
-	for i in range(0, len(GP)-1, 3):
-		if any(GP[i+1:i+3]==0):
-			# this corresponds to a point mass at 0
-			wzero += GP[i]/norm
-	if args.zero:
-		# assumed mass at 0
-		wzero += GP[-1]/norm
-	
-	nicestring = '\n'.join(' '.join(str(x) for x in component) for component in niceparams)
-	if wzero:
-		nicestring += '\n' + str(wzero)
-	
-	chooseprint(nicestring, file=outfiles['final'])
+	# Output just the parameters of inferred distribution:
+	chooseprint('\n'.join(' '.join(str(x) for x in component) for component in clean_parameters(full_params, args)), file=outfiles['final'])
 
 	
 	
