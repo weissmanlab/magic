@@ -470,7 +470,7 @@ class PiecewiseExponential(scipy.stats.rv_continuous):
 			msparams += '-T '
 		if L:
 			msparams += '-t {} -r {} {} -p {} '.format(L * theta0, L * rho * theta0, L, math.ceil(math.log10(L)))
-		msparams += '-eN '.join('{} {} '.format(self.breaks[i] / theta0, self.rates[i] * theta0) for i in range(1, len(breaks)))
+		msparams += '-eN ' + '-eN '.join('{} {} '.format(self.breaks[i] / theta0 / 2, self.rates[i] * theta0) for i in range(1, len(self.breaks)))
 		return msparams
 		
 
