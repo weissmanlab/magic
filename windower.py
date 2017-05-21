@@ -1,7 +1,27 @@
 #!/usr/bin/env python3
 
-import sys, math, numpy, os.path, collections
+import sys, math, numpy, os.path, collections, argparse
 
+
+def parse_args(arglist):
+	parser = argparse.ArgumentParser()
+	parser.add_argument("path", help="Path/prefix for SNP file, and maybe coverage and output files")
+	parser.add_argument("--coverfile", help="Coverage file, if different from <path>_cover.txt")
+	parser.add_argument("--outpath", help="path/prefix for output files, if different from input")
+	parser.add_argument("--scales", help="number of length scales to use for windows", type=int, default=16)
+	parser.add_argument("--ratio", help="Ratio between successive length scales. Must be integer", type=int, default=2)
+	parser.add_argument("--baselength", help="Smallest length scale", type=int, default=80)
+	parser.add_argument("--min_coverage", help="Minimum coverage for a window to be counted", type=float, default=0.8)
+	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up', 'down', 'no'], default='down')
+	parser.add_argument("--stat", help="Statistic to calculate (tbl, individual tips, folded sfs component)", default='tbl')
+	parser.add_argument("--input_form", help="Format of input", choices=['msmc','windows','reverse_windows'], default='msmc')
+	parser.add_argument("--final_windows", help="Print out the longest windows", action='store_true')
+	parser.add_argument("--seed", help="Seed for random sampling of windows", type=int)
+	args = parser.parse_args(arglist)
+	if args.path.endswith('.txt'):
+		args.path = args.path[:-4]	
+	return args
+	
 
 def merge(windows, num):
 	if num % 1:
@@ -15,17 +35,17 @@ def merge(windows, num):
 	return [numpy.sum(windows[i:i+num], axis=0) for i in range(0, len(windows), num)]
 
 		
-def snpdist(windows, L, args):
+def snpdist(windows, L, args, rng=numpy.random):
 	dist = {}
 	for win in windows:
 		 if win[1] >= args.min_coverage * L :
 		 # the window is sequenced at high enough coverage
 		 	if args.sample_gaps == 'up' and win[1] < L and win[0]:
 		 		# upsample the window
-		 		count = win[0] + numpy.random.binomial(L-win[1], win[0]/L)
+		 		count = win[0] + rng.binomial(L-win[1], win[0]/L)
 		 	elif args.sample_gaps == 'down' and win[1] > math.ceil(args.min_coverage * L)  and  win[0]:
 		 		# downsample the window
-		 		count = numpy.random.hypergeometric(win[0], win[1]-win[0], math.ceil(args.min_coverage*L)) 
+		 		count = rng.hypergeometric(win[0], win[1]-win[0], math.ceil(args.min_coverage*L)) 
 		 	else:
 		 		# record window as-is
 		 		count = win[0]
@@ -42,25 +62,9 @@ def initwindows(SNPs, basecoverage, args):
 	return [numpy.array(x) for x in zip(windowcounts, basecoverage)]
 		
 if __name__ == '__main__':	
-	import argparse
 
-	parser = argparse.ArgumentParser()
-	parser.add_argument("path", help="Path/prefix for SNP file, and maybe coverage and output files")
-	parser.add_argument("--coverfile", help="Coverage file, if different from <path>_cover.txt")
-	parser.add_argument("--outpath", help="path/prefix for output files, if different from input")
-	parser.add_argument("--scales", help="number of length scales to use for windows", type=int, default=16)
-	parser.add_argument("--ratio", help="Ratio between successive length scales. Must be integer", type=int, default=2)
-	parser.add_argument("--baselength", help="Smallest length scale", type=int, default=80)
-	parser.add_argument("--min_coverage", help="Minimum coverage for a window to be counted", type=float, default=0.8)
-	parser.add_argument("--sample_gaps", help="For counts, up- or downsample windows to the same coverage", choices=['up', 'down', 'no'], default='down')
-	parser.add_argument("--stat", help="Statistic to calculate (tbl, individual tips, folded sfs component)", default='tbl')
-	parser.add_argument("--input_form", help="Format of input", choices=['msmc','windows','reverse_windows'], default='msmc')
-	parser.add_argument("--final_windows", help="Print out the longest windows", action='store_true')
-	args = parser.parse_args()
+	args = parse_args(sys.argv[1:])
 
-
-	if args.path.endswith('.txt'):
-		args.path = args.path[:-4]	
 	if args.coverfile:
 		covername = args.coverfile
 	else:
@@ -69,8 +73,10 @@ if __name__ == '__main__':
 		outname = args.outpath
 	else:
 		outname = args.path
-
+		
 	if args.input_form == 'msmc':
+		# set up the random number generator (although it will only be used if sample_gaps != 'no'):
+		prng = numpy.random.RandomState(args.seed)
 		with open(args.path+'.txt', 'r') as infile:
 			samplesize = len(next(infile).split()[-1]) # might need this if we're calculating SFS or individuals' singletons
 		with open(args.path+'.txt', 'r') as infile:
@@ -131,7 +137,7 @@ if __name__ == '__main__':
 						print('Reached chromosome length at length scale {} for individual {}'.format(fold, indiv), file=outfile)
 						del windows[indiv]
 					else:
-						windowsums[indiv].append(snpdist(indivwindows, L, args))
+						windowsums[indiv].append(snpdist(indivwindows, L, args, prng))
 				if not windows:
 					break
 			else:
@@ -142,7 +148,7 @@ if __name__ == '__main__':
 				if len(windows) < 2:
 					print('Reached chromosome length at length scale ' + str(fold), file=outfile)
 					break
-				windowsums.append(snpdist(windows, L, args)) 
+				windowsums.append(snpdist(windows, L, args, prng)) 
 			
 	if args.stat == 'indiv_tips':
 		for indiv, indivwindows in windowsums.items():
