@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
 
-import sys, math, scipy, scipy.stats, scipy.optimize, itertools
+import sys, math, scipy, scipy.stats, scipy.optimize, itertools, argparse
 import numpy as np
+             
+             
+# Parsing arguments (needed to run as script):
+
+def parse_args(arglist):
+	parser = argparse.ArgumentParser()
+	parser.add_argument("countfiles", nargs="+", help="Files with histograms of polymorphisms per window (or, if LT=start, file with Laplace transform values)")
+	parser.add_argument("--out", help="Output prefix (otherwise prints to stdout)")
+	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
+	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
+	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
+	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
+	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
+	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
+	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
+	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
+	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
+	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
+	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
+	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
+	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=0)
+	return parser.parse_args(arglist)
+
              
 # Printing:	
 
@@ -524,26 +547,9 @@ def extract_counts(filenames, input="sparse"):
 	
 # code to run as script:
 if __name__ == "__main__":
-	import argparse, warnings
-
+	import warnings
 	
-	parser = argparse.ArgumentParser()
-	parser.add_argument("countfiles", nargs="+", help="Files with histograms of polymorphisms per window, or, if LT=start, file with Laplace transform values")
-	parser.add_argument("--out", help="Output prefix (otherwise prints to stdout)")
-	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
-	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
-	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
-	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
-	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
-	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
-	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
-	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
-	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
-	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
-	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
-	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
-	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=0)
-	args = parser.parse_args()
+	args = parse_args(sys.argv[1:])
 
 	# Set up the output:
 	if args.out:
