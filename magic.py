@@ -17,7 +17,7 @@ def parse_args(arglist):
 	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
-	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to `only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
+	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to 'only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
 	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
