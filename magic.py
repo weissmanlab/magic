@@ -23,7 +23,12 @@ def parse_args(arglist):
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
 	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
 	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=1)
-	return parser.parse_args(arglist)
+	args = parser.parse_args(arglist)
+	
+	if args.family == 'pieceexp' and args.zero:
+		sys.exit('Sorry, currently --zero can only be used with --family gammamix.')
+	
+	return args
 
              
 # Printing:	
@@ -276,11 +281,18 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 
 ## Helper functions for inferring a piecewise exponential distribution
 
-def piece_exp_obj(rates, breaks, mLTobs, smoothing):
-	breakPs = np.exp(np.cumsum(np.concatenate(((0,), -np.diff(breaks) * rates[:-1]))))
+def piece_exp_obj(params, breaks, mLTobs, smoothing, zeroPt=False):
+	if zeroPt:
+		# first entry of params is weight at t=0:
+		p0 = params[0]
+		rates = params[1:]
+	else:
+		p0 = 0
+		rates = params
+	breakPs = (1 - p0) * np.exp(np.cumsum(np.concatenate(((0,), -np.diff(breaks) * rates[:-1]))))
 	prefactors = [breakPs * np.exp(-m * breaks) / (1 + m/rates) for m in mLTobs[:,0]]
 	postfactors = [np.concatenate( (-np.expm1(-(rates[:-1] + m) * np.diff(breaks)), (1,)) ) for m in mLTobs[:,0]]
-	return np.sum( ((prefactors[i] @ postfactors[i] - obs[1]) / obs[2])**2 for i, obs in enumerate(mLTobs) ) + smoothing * np.linalg.norm(np.diff(np.log(rates)))**2
+	return np.sum( ((prefactors[i] @ postfactors[i] + p0 - obs[1]) / obs[2])**2 for i, obs in enumerate(mLTobs) ) + smoothing * np.linalg.norm(np.diff(np.log(rates)))**2
 
 	
 # class PieceExpStep(object):
