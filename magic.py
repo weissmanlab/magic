@@ -324,6 +324,7 @@ class GammaMixStep(object):
 	def __call__(self, gp):
 		s = self.stepsize
 		eps = 1e-8
+		gpnew = np.copy(gp)
 		# component weights are drawn from a Dirichlet distribution to normalize them:
 		gpnew[::3] = np.random.dirichlet(gp[::3]/sum(gp[::3])/s)
 		# component means and scales are log-normal to keep them positive
