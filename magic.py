@@ -281,7 +281,7 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 
 ## Helper functions for inferring a piecewise exponential distribution
 
-def piece_exp_obj(params, breaks, mLTobs, smoothing, zeroPt=False):
+def piece_exp_obj(params, breaks, mLTobs, smoothing=0, zeroPt=False):
 	if zeroPt:
 		# first entry of params is weight at t=0:
 		p0 = params[0]
