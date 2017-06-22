@@ -484,17 +484,19 @@ class PiecewiseExponential(scipy.stats.rv_continuous):
 		return self.breakPs[i] * np.exp(-self.rates[i] * (t - self.breaks[i]))
 	def _cdf(self, t):
 		return 1 - self._sf(t)
+	def mean(self):
+		return -np.concatenate((np.diff(self.breakPs), [0])) @ (1/self.rates)
 	def lt(self, s):
 		'''Laplace transform evaluated at s.'''
-		prefactors = self.breakPs * np.exp(-s * self.breaks) / (1 + s/self.rates)
-		postfactors = np.concatenate( (-np.expm1(-(self.rates[:-1] + s) * np.diff(self.breaks)), (1,)) )
-		return prefactors @ postfactors
+		return self.breakPs[-1] * np.exp(-s * self.breaks[-1]) / (1 + s / self.rates[-1]) - (
+			np.sum(self.breakPs[i] * np.exp(-s * self.breaks[i]) / (1 + s / self.rates[i]) * np.expm1(-(self.rates[i] + s) * gap) for i, gap in enumerate(np.diff(self.breaks))) )
 	def blcdf(self, r):
 		'''Fraction of IBD blocks with map length less than r/(mutation rate).'''
-		prefactors = self.breakPs * np.exp(-r * self.breaks) / (1 + r/self.rates)
-		postfactors = self.breaks + 1 / (r + self.rates)
-		postfactors[:-1] -= (1 / (r + self.rates[:-1]) + self.breaks[1:]) * np.exp(-(r + self.rates[-1]) * np.diff(self.breaks))
-		return prefactors @ postfactors / self.mean()
+		rc = np.outer(r, np.ones(len(self.rates))) + self.rates
+		prefactors = self.breakPs * np.exp(-np.outer(r, self.breaks)) / (1 + np.outer(r, 1/self.rates))
+		postfactors = self.breaks + 1 / rc
+		postfactors[:, :-1] -= (1 / rc[:, :-1] + self.breaks[1:]) * np.exp(-rc[:, :-1] * np.diff(self.breaks))
+		return np.array([pre @ postfactors[i] for i, pre in enumerate(prefactors)]) / self.mean()
 	def ne(self, t):
 		'''Inverse hazard rate ("effective population size" for pairwise coalescence time, but note that it is 4 * mu * N_e(2 * mu * t)).'''
 		return 1 / self.rates[np.searchsorted(self.breaks, t, side='right') - 1]
