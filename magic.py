@@ -21,7 +21,7 @@ def parse_args(arglist):
 	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
-	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
+#	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
 	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=1)
 	args = parser.parse_args(arglist)
 	
