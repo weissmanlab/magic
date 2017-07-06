@@ -129,8 +129,14 @@ The basic syntax is:
 	
 where the histogram files are the outputs of `windower.py`. 
 This will produce a file with the suffix `_final.txt` with the best fit
-mixture of [gamma distributions](https://en.wikipedia.org/wiki/Gamma_distribution)
-for the desired coalescence time distribution. The first column of the file gives
+for the desired coalescence time distribution.
+There are two possible forms currently implemented:
+
+- **Piecewise-exponential** (default or use `--family pieceexp`). 
+This is the same form as MSMC. The first column of the file lists the starting points of the time intervals. The second column gives the rate parameter in each interval. If you're analyzing pairwise coalescence times, this is the coalescence rate, *c*(*t*) = 1/*N*<sub>e</sub>(*t*).
+- **Gamma mixture** (use `--family gammamix`).
+A mixture of [gamma distributions](https://en.wikipedia.org/wiki/Gamma_distribution).
+ The first column of the file gives
 the weights of each component gamma distribution, the second column gives the shape
 parameters, and the third gives the scale parameters. 
 If the last row has only a single column, it is the estimated probability that the 
@@ -138,7 +144,8 @@ desired time is exactly 0.
 (This is expected for many tree features, e.g.,
 branches that lie over exactly 1/3 of the haplotypes in the sample; 
 for these features you can force `magic.py` to include this line using the optional argument `--zero`.)
-All times are normalized with the per-base mutation rate, so, for example, 0.001 means 0.001/&#956;.
+
+For both forms, all times are normalized with the per-base mutation rate, so, for example, 0.002 means 0.002/&#956;. Note that if you're looking at pairwise data, this time counts both branches of the coalescent tree, so if you want to get just the number of generations in the past, you would divide by 2 to get 0.001/&#956;.
 
 Additionally, `magic.py` produces a file with the suffix `_LT.txt`
 giving the Laplace transform of the distribution at a discrete set of points.
