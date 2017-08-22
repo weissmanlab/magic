@@ -518,8 +518,8 @@ class PiecewiseExponential(scipy.stats.rv_continuous):
 def combine_counts(counts, input="sparse"):
 	'''Combine multiple histograms.'''
 	if input == "sparse":
-		combokeys = set().union(*[hist.keys() for hist in counts])
-		return {i:sum(hist[i] for hist in counts if i in hist.keys()) for i in combokeys}
+		combokeys = set().union(*[hist.keys() for hist in counts if hist is not None])
+		return {i:sum(hist[i] for hist in counts if hist is not None and i in hist.keys()) for i in combokeys}
 	elif input == "full":
 		total = np.zeros(max(len(hist) for hist in counts), dtype=np.int)
 		for hist in counts:
@@ -590,7 +590,7 @@ if __name__ == "__main__":
 			SLTpts = np.array([[float(x) for x in line.split()] for line in infile])
 	else:
 		# Import the diversity histograms:
-		counts = extract_counts(args.countfiles, args.input)
+		counts = extract_counts(args.countfiles)
 		for scale, count in enumerate(counts):
 			count.bases = args.baselength * 2**scale
 			count.coverage = args.coverage
