@@ -545,7 +545,7 @@ def extract_counts(filenames, input="sparse"):
 		countdicts = []
 		for file in filenames:
 			with open(file, 'r') as infile:
-				countdicts.append([{int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
+				countdicts.append([None if line=='\n' else {int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
 		combocountdicts = [combine_counts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
 		return [SNPHistogram(dict2array(hist)) for hist in combocountdicts]
 	# if the input files are written as full lists:
