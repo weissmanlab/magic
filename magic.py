@@ -14,7 +14,7 @@ def parse_args(arglist):
 	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
 	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
 	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
-	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 1 is a lot, .1 is very little.", type=np.float, default=.5)
+	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 10 is a lot, .1 is very little.", type=np.float, default=.5)
 	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
 	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to 'only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
@@ -175,7 +175,26 @@ def sigmoid_fit(points, anchor=None):
 		# print(error)
 		return None			
 
-
+def check_fit(fit, data, extrapolation=.5, anchor=None):
+	'''Check that fit isn't extrapolating too much, i.e., we have data close to the left asymptote, and that we have a valid probability'''
+	if fit is None:
+		return False
+	if anchor:
+		yleft, xmid, slope, alpha = fit[0]
+		yright = anchor
+	else:
+		yleft, yright, xmid, slope = fit[0]
+		alpha = 1
+	# check that we have data close to left asymptote (ie, not extrapolating too much):
+	if (yleft - sigmoid(data[0][0], yleft, yright, xmid, slope, alpha))**2 < 0.001 * extrapolation * yleft * (1 - yleft):
+		# check that we have a valid probability:
+		try:
+			pt = ProbPoint(fit[0][0], np.sqrt(fit[1][0][0]))
+		except:
+			return False
+		if pt.check():
+			return True
+	return False
 
 def h0e(LTLpts, extrapolation=.5, anchor=None, return_full=False):
 	'''Infer the pointwise LT with error at s given a list of estimates based on different window sizes.'''
@@ -188,26 +207,23 @@ def h0e(LTLpts, extrapolation=.5, anchor=None, return_full=False):
 			yleft, xmid, slope, alpha = fit[0]
 		else:
 			yleft, yright, xmid, slope = fit[0]
-		# if we have enough points on both sides of the midpoint, do second fitting with just the short-scale points to focus in on left asymptote:
+		# if we have enough points on both sides of the midpoint, try to do second fitting with just the short-scale points to focus in on left asymptote:
 		shortLTLpts = [ltl for ltl in LTLpts if ltl[0] < xmid]
 		longLTLpts = [ltl for ltl in LTLpts if ltl[0] > xmid]
 		if len(shortLTLpts) >= 4 and len(longLTLpts) > 2:
 			# if we have lots of short-scale points, we can restrict even further:
 			while len(shortLTLpts) > 6 and (xmid - shortLTLpts[-1][0]) * slope < 1:
 				shortLTLpts.pop()
-			fit = sigmoid_fit(shortLTLpts, anchor=anchor)
-		# check that we have data close to left asymptote (ie, not extrapolating too much):
-		if (xmid - LTLpts[0][0]) * slope * extrapolation > 1:
-			# check that we have a valid probability:
-			try:
-				pt = ProbPoint(fit[0][0], np.sqrt(fit[1][0][0]))
-			except:
-				return None
-			if pt.check():
-				if return_full:
-					return fit
-				else:
-					return pt
+			tmp_fit = sigmoid_fit(shortLTLpts, anchor=anchor)
+			if check_fit(tmp_fit, shortLTLpts, extrapolation, anchor):
+				fit = tmp_fit
+		# check that we have a plausible fit:
+		if check_fit(fit, LTLpts, extrapolation, anchor):
+			pt = ProbPoint(fit[0][0], np.sqrt(fit[1][0][0]))
+			if return_full:
+				return fit
+			else:
+				return pt
 	return None
 	
 		
@@ -227,18 +243,18 @@ def infer_slt(counts, svals=None, sratio=np.sqrt(2), maxHom=.99, emaxL=1, pmin=0
 			return pe
 	if svals is not None:  # list of desired s values provided
 		allSLT = [s2pt(s) for s in svals]
-		return np.array([slt for slt in allSLT if slt and slt.check(emax=emax0)])
+		return np.array([slt.xpe() for slt in allSLT if slt and slt.check(emax=emax0)])
 	else:  # need to determine appropriate s values
 		if sratio <= 1:
 			sys.exit("Error: sratio must be > 1.")
-		# start with a LT variable value that should have a nice curve
-		s = 0.1 / counts[0].theta()
-		allSLT = [s2pt(s)]
-		# go to lower values until estimated homozygosity exceeds maxHom:
-		while allSLT[-1] and allSLT[-1].check(pmax=maxHom):
-			s /= sratio
-			allSLT.append(s2pt(s))
-		allSLT = sorted([slt for slt in allSLT if slt], key=lambda pt: pt.x)
+		# start with a wide range of s values:
+		svals = np.geomspace(0.01 / counts[0].theta(), 100 / counts[0].theta())
+		allSLT = [s2pt(s) for s in svals]
+		# go to lower s values until estimated homozygosity exceeds maxHom or things get too noisy:
+		while allSLT[0] and allSLT[0].check(pmax=maxHom):
+			s = allSLT[0].x / sratio
+			allSLT.insert(0, s2pt(s))
+		allSLT = [slt for slt in allSLT if slt]
 		try:
 			s = allSLT[-1].x
 		except: #no s values worked so far; just give up
