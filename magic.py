@@ -562,7 +562,12 @@ def extract_counts(filenames, input="sparse"):
 		for file in filenames:
 			with open(file, 'r') as infile:
 				countdicts.append([None if line=='\n' else {int(pair.split()[0]): int(pair.split()[1]) for pair in line.split(',')} for line in infile])
+				# remove any trailing Nones arising from trailing whitespace in the input file:
+				while countdicts[-1] and countdicts[-1][-1] is None:
+					countdicts[-1].pop()
 		combocountdicts = [combine_counts(hists, "sparse") for hists in itertools.zip_longest(*countdicts)]
+		if {} in combocountdicts:
+			sys.exit("There appears to be a lengthscale with no data. Try checking the *_counts.txt files for extraneous blank lines.")
 		return [SNPHistogram(dict2array(hist)) for hist in combocountdicts]
 	# if the input files are written as full lists:
 	elif input == "full":
