@@ -592,9 +592,9 @@ if __name__ == "__main__":
 		outfiles = {key: args.out + '_{}.txt'.format(key) for key in ('LT', 'final')}
 		outfiles['log'] = args.out + '.log'
 		# redirect warnings to the logfile:
-		def warn2file(message, category, filename, lineno, file=args.out+'.log', line=None):
+		def warn2file(message, category, filename, lineno, file=None, line=None):
 			'''Print warning to a file instead of sys.stderr'''
-			with open(file, 'a') as warnfile:
+			with open(args.out+'.log', 'a') as warnfile:
 				print(warnings.formatwarning(message, category, filename, lineno), file=warnfile)
 		warnings.showwarning = warn2file
 		# log the initial command:
