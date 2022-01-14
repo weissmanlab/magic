@@ -10,19 +10,19 @@ def parse_args(arglist):
 	parser = argparse.ArgumentParser()
 	parser.add_argument("countfiles", nargs="+", help="Files with histograms of polymorphisms per window (or, if LT=start, file with Laplace transform values)")
 	parser.add_argument("--out", help="Output prefix (otherwise prints to stdout)")
-	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=np.int, default=80)
-	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=np.float, default=0.8)
-	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=np.float, default=.99)
-	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=np.float, default=0.05)
-	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 10 is a lot, .1 is very little.", type=np.float, default=.5)
+	parser.add_argument("--baselength", help="Number of bases in shortest windows", type=int, default=80)
+	parser.add_argument("--coverage", help="Fraction of bases that are sequenced", type=float, default=0.8)
+	parser.add_argument("--maxLT", help="Max value of Laplace transform to fit", type=float, default=.99)
+	parser.add_argument("--ltstep", help="Max spacing between inferred Laplace transform values", type=float, default=0.05)
+	parser.add_argument("--extrapolation", help="How far to extrapolate to small length scales. 10 is a lot, .1 is very little.", type=float, default=.5)
 	parser.add_argument("--family", help="Parametric form to use for coalescence time distribution", choices=("pieceexp", "gammamix"), default="pieceexp")
 	parser.add_argument("--zero", help="Allow the coalescence time to be exactly 0 with some probability", action='store_true')
 	parser.add_argument("--LT", help="Set to False to hide Laplace transform values. Set to 'only' to return *only* the LT values. Set to 'start' to fit a distribution starting from an existing Laplace transform", default=True)
 	parser.add_argument("--components", help="Number of components to fit in probability distribution", type=int, default=None)
 	parser.add_argument("--iterations", help="How many times to run optimization algorithm", type=int, default=50)
 	parser.add_argument("--maxfun", help="Max number of function evaluations in each optimization run", type=int, default=5e4)
-#	parser.add_argument("--input", help="Format of input histograms (full or sparse)", choices=("full", "sparse"), default="sparse")
-	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=np.float, default=1)
+	parser.add_argument("--input", help="Format of input histograms ('full' or 'sparse'). You should leave this as 'sparse'; it's just included for backwards compatibility.", choices=("full", "sparse"), default="sparse")
+	parser.add_argument("--smoothing", help="For piecewise-exponential distributions: how much of a penalty to assess for changes in coalescence rates", type=float, default=1)
 	args = parser.parse_args(arglist)
 	
 	if args.family == 'pieceexp' and args.zero:
@@ -308,7 +308,7 @@ def piece_exp_obj(params, breaks, mLTobs, smoothing=0, zeroPt=False):
 	breakPs = (1 - p0) * np.exp(np.cumsum(np.concatenate(((0,), -np.diff(breaks) * rates[:-1]))))
 	prefactors = [breakPs * np.exp(-m * breaks) / (1 + m/rates) for m in mLTobs[:,0]]
 	postfactors = [np.concatenate( (-np.expm1(-(rates[:-1] + m) * np.diff(breaks)), (1,)) ) for m in mLTobs[:,0]]
-	return np.sum( ((prefactors[i] @ postfactors[i] + p0 - obs[1]) / obs[2])**2 for i, obs in enumerate(mLTobs) ) + smoothing * np.linalg.norm(np.diff(np.log(rates)))**2
+	return sum( ((prefactors[i] @ postfactors[i] + p0 - obs[1]) / obs[2])**2 for i, obs in enumerate(mLTobs) ) + smoothing * np.linalg.norm(np.diff(np.log(rates)))**2
 
 	
 # class PieceExpStep(object):
@@ -537,7 +537,7 @@ def combine_counts(counts, input="sparse"):
 		combokeys = set().union(*[hist.keys() for hist in counts if hist is not None])
 		return {i:sum(hist[i] for hist in counts if hist is not None and i in hist.keys()) for i in combokeys}
 	elif input == "full":
-		total = np.zeros(max(len(hist) for hist in counts), dtype=np.int)
+		total = np.zeros(max(len(hist) for hist in counts), dtype=int)
 		for hist in counts:
 			total[:len(hist)] += hist
 		return total
@@ -611,7 +611,7 @@ if __name__ == "__main__":
 			SLTpts = np.array([[float(x) for x in line.split()] for line in infile])
 	else:
 		# Import the diversity histograms:
-		counts = extract_counts(args.countfiles)
+		counts = extract_counts(args.countfiles, input=args.input)
 		for scale, count in enumerate(counts):
 			count.bases = args.baselength * 2**scale
 			count.coverage = args.coverage
